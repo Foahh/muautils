@@ -46,9 +46,9 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
     if (needOffset) {
         spdlog::info("Applying offset filter");
         if (offset > 0.0) {
-            flast = Filter(graph, flast, "adelay", "adelay", "delays={}s:all=1", offset);
+            flast = Filter(graph, flast, "adelay", "adelay", "delays={}:all=1", offset * 1000);
         } else {
-            flast = Filter(graph, flast, "atrim", "atrim", "start={}s", -offset);
+            flast = Filter(graph, flast, "atrim", "atrim", "start={}", -offset);
         }
     }
 

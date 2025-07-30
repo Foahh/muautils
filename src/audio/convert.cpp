@@ -23,13 +23,13 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
     const auto dctx = OpenDecoder(ist);
 
     const bool needTransform = dctx->codec_id != target.CodecId;
-    const bool needFormat = meta.SampleRate != target.SampleRate || meta.Channels != target.Channels ||
-                            meta.SampleFormat != target.SampleFormat;
+    const bool needFormat = meta.SampleRate != target.SampleRate || meta.SampleFormat != target.SampleFormat;
+    const bool needChannels = meta.Channels != target.Channels;
     const bool needVolume = std::abs(gain) >= target.GainTolerance;
     const bool needLimit = std::abs(meta.TruePeak - target.Limit) >= target.TruePeakTolerance;
     const bool needOffset = std::abs(offset) >= target.OffsetTolerance;
 
-    if (!needTransform && !needFormat && !needVolume && !needLimit && !needOffset) {
+    if (!needTransform && !needFormat && !needChannels && !needVolume && !needLimit && !needOffset) {
         return false;
     }
 
@@ -65,13 +65,10 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
     }
 
     // TODO: channel_layouts=stereo
-    if (needFormat) {
-        spdlog::info("Applying format conversion filter");
-        flast = Filter(graph, flast, "aformat", "aformat",
-                             "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
-                             av_get_sample_fmt_name(FMT_PCM_S16LE_8LU.SampleFormat),
-                             FMT_PCM_S16LE_8LU.SampleRate);
-    }
+    flast = Filter(graph, flast, "aformat", "aformat",
+                         "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
+                         av_get_sample_fmt_name(FMT_PCM_S16LE_8LU.SampleFormat),
+                         FMT_PCM_S16LE_8LU.SampleRate);
 
     AVFilterContext *fsnk = Filter(graph, flast, "abuffersink", "abuffersink");
 

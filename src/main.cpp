@@ -45,7 +45,7 @@ int core(int argc, T **argv) {
     const auto scAn = app.add_subcommand("an", "Audio::Normalize")->fallthrough();
     scAn->add_option("-s,--src", an.src)->required();
     scAn->add_option("-d,--dst", an.dst)->required();
-    scAn->add_option("-o,--offset", an.offset, "second")->required();
+    scAn->add_option("-o,--offset", an.offset, "offset (s)");
 
     const auto scAi = app.add_subcommand("ai", "Audio::EnsureValid")->fallthrough();
     scAi->add_option("-s,--src", ai.src)->required();

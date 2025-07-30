@@ -40,7 +40,7 @@ struct NormalizeFormat {
 };
 
 static constexpr NormalizeFormat FMT_PCM_S16LE_8LU = {
-    AV_CODEC_ID_PCM_S16LE, AV_SAMPLE_FMT_S16, 48000, 2, -8.0, -1.0, 10, 150, 1, 1, 0.0001};
+    AV_CODEC_ID_PCM_S16LE, AV_SAMPLE_FMT_S16, 48000, 2, -8.0, 0, 12, 200, 1, 1, 0.0001};
 
 AudioStreamMeta Analyze(const fs::path &path);
 

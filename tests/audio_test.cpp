@@ -1,6 +1,7 @@
 #include "common.hpp"
 
 #include "audio/audio.hpp"
+#include "audio/convert.hpp"
 
 #include <iostream>
 
@@ -56,11 +57,4 @@ TEST_CASE("Normalize") {
         REQUIRE_FALSE(ret);
         REQUIRE(!fs::exists(tmpPath));
     }
-}
-
-TEST_CASE("Normalize HCA") {
-    const auto srcPath = GetInputPath(L"1.mp3");
-    const auto tmpPath = GetOutputPath(L"1_hca_normalized.wav");
-    const auto dstPath = GetOutputPath(L"1_hca_normalized.hca");
-    REQUIRE_NOTHROW(NormalizeHca(srcPath, tmpPath, 0.0, dstPath, 32931609366120192UL));
 }

@@ -6,6 +6,8 @@ include_directories("src")
 
 if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+    add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
 endif ()
 
 # Common Library
@@ -20,7 +22,7 @@ target_sources(audio_lib PUBLIC src/audio/convert.cpp src/audio/audio.cpp)
 find_package(FFMPEG REQUIRED)
 target_include_directories(audio_lib INTERFACE ${FFMPEG_INCLUDE_DIRS})
 target_link_directories(audio_lib INTERFACE ${FFMPEG_LIBRARY_DIRS})
-target_link_libraries(audio_lib INTERFACE ${FFMPEG_LIBRARIES})
+target_link_libraries(audio_lib INTERFACE ${FFMPEG_LIBRARIES} common_lib)
 
 # Image Library
 add_library(image_lib INTERFACE)
@@ -30,7 +32,9 @@ find_package(freeimage CONFIG REQUIRED)
 target_link_libraries(image_lib INTERFACE common_lib Microsoft::DirectXTex freeimage::FreeImage freeimage::FreeImagePlus)
 
 # Main Executables
-add_executable(mua src/main.cpp)
+add_executable(mua src/main.cpp
+        src/audio/convert.hpp
+)
 find_package(CLI11 CONFIG REQUIRED)
 target_link_libraries(mua PRIVATE audio_lib image_lib CLI11::CLI11)
 

@@ -1,4 +1,5 @@
 #include "audio/audio.hpp"
+#include "audio/convert.hpp"
 #include "image/image.hpp"
 #include "lib.hpp"
 
@@ -6,8 +7,8 @@
 #include <array>
 #include <filesystem>
 #include <iostream>
-#include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #define RET_OK 0
 #define RET_ERROR 1

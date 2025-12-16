@@ -305,7 +305,7 @@ if(@WITH_VAAPI@)
   endif()
 endif()
 
-endif(NOT z_vcpkg_using_vcpkg_find_ffmpeg)
+endif(NOT z_vcpkg_using_vcpkg_find_ffmpeg AND NOT "@BUILD_SHARED_LIBS@")
 unset(z_vcpkg_using_vcpkg_find_ffmpeg)
 
 set(FFMPEG_LIBRARY ${FFMPEG_LIBRARIES})

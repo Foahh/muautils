@@ -49,7 +49,12 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
         if (offset > 0.0) {
             flast = Filter(graph, flast, "adelay", "adelay", "delays={}:all=1", offset * 1000);
         } else {
-            flast = Filter(graph, flast, "atrim", "atrim", "start={}", -offset);
+            const double cutSeconds = -offset;
+            const int sr = dctx->sample_rate;
+            const int64_t startSample = llround(cutSeconds * sr);
+
+            flast = Filter(graph, flast, "atrim", "atrim", "start_sample={}", startSample);
+            flast = Filter(graph, flast, "asetpts", "asetpts", "expr=PTS-STARTPTS");
         }
     }
 

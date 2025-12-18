@@ -17,20 +17,20 @@
 struct {
     fs::path src, dst;
     double offset = 0.0;
-} an;
+} audio_normalize_opts;
 
 struct {
     fs::path src;
-} ai, ii;
+} audio_ensure_valid_opts, image_ensure_valid_opts;
 
 struct {
     fs::path src, dst;
-} cj, ed;
+} convert_jacket_opts, extract_dds_opts;
 
 struct {
     fs::path bg, stsrc, stdst;
     std::array<fs::path, 4> fx{};
-} cs;
+} convert_stage_opts;
 
 template <typename T>
 int core(int argc, T **argv) {
@@ -43,33 +43,33 @@ int core(int argc, T **argv) {
     app.add_option("--loglevel", log_level, "(trace, debug, info, warn, error, critical, off)")
         ->default_val("info");
 
-    const auto scAn = app.add_subcommand("an", "Audio::Normalize")->fallthrough();
-    scAn->add_option("-s,--src", an.src)->required();
-    scAn->add_option("-d,--dst", an.dst)->required();
-    scAn->add_option("-o,--offset", an.offset, "offset (s)");
+    const auto subcmd_audio_normalize = app.add_subcommand("audio_normalize", "Audio::Normalize")->fallthrough();
+    subcmd_audio_normalize->add_option("-s,--src", audio_normalize_opts.src)->required();
+    subcmd_audio_normalize->add_option("-d,--dst", audio_normalize_opts.dst)->required();
+    subcmd_audio_normalize->add_option("-o,--offset", audio_normalize_opts.offset, "offset (s)");
 
-    const auto scAi = app.add_subcommand("ai", "Audio::EnsureValid")->fallthrough();
-    scAi->add_option("-s,--src", ai.src)->required();
+    const auto subcmd_audio_ensure_valid = app.add_subcommand("audio_check", "Audio::EnsureValid")->fallthrough();
+    subcmd_audio_ensure_valid->add_option("-s,--src", audio_ensure_valid_opts.src)->required();
 
-    const auto scIi = app.add_subcommand("ii", "Image::EnsureValid")->fallthrough();
-    scIi->add_option("-s,--src", ii.src)->required();
+    const auto subcmd_image_ensure_valid = app.add_subcommand("image_check", "Image::EnsureValid")->fallthrough();
+    subcmd_image_ensure_valid->add_option("-s,--src", image_ensure_valid_opts.src)->required();
 
-    const auto scCj = app.add_subcommand("cj", "Image::ConvertJacket")->fallthrough();
-    scCj->add_option("-s,--src", cj.src)->required();
-    scCj->add_option("-d,--dst", cj.dst)->required();
+    const auto subcmd_convert_jacket = app.add_subcommand("convert_jacket", "Image::ConvertJacket")->fallthrough();
+    subcmd_convert_jacket->add_option("-s,--src", convert_jacket_opts.src)->required();
+    subcmd_convert_jacket->add_option("-d,--dst", convert_jacket_opts.dst)->required();
 
-    const auto scCs = app.add_subcommand("cs", "Image::ConvertStage")->fallthrough();
-    scCs->add_option("-b,--bg", cs.bg)->required();
-    scCs->add_option("-s,--stsrc", cs.stsrc)->required();
-    scCs->add_option("-d,--stdst", cs.stdst)->required();
-    scCs->add_option("-1,--fx1", cs.fx[0]);
-    scCs->add_option("-2,--fx2", cs.fx[1]);
-    scCs->add_option("-3,--fx3", cs.fx[2]);
-    scCs->add_option("-4,--fx4", cs.fx[3]);
+    const auto subcmd_convert_stage = app.add_subcommand("convert_stage", "Image::ConvertStage")->fallthrough();
+    subcmd_convert_stage->add_option("-b,--bg", convert_stage_opts.bg)->required();
+    subcmd_convert_stage->add_option("-s,--stsrc", convert_stage_opts.stsrc)->required();
+    subcmd_convert_stage->add_option("-d,--stdst", convert_stage_opts.stdst)->required();
+    subcmd_convert_stage->add_option("-1,--fx1", convert_stage_opts.fx[0]);
+    subcmd_convert_stage->add_option("-2,--fx2", convert_stage_opts.fx[1]);
+    subcmd_convert_stage->add_option("-3,--fx3", convert_stage_opts.fx[2]);
+    subcmd_convert_stage->add_option("-4,--fx4", convert_stage_opts.fx[3]);
 
-    const auto scEd = app.add_subcommand("ed", "Image::ExtractDds")->fallthrough();
-    scEd->add_option("-s,--src", ed.src)->required();
-    scEd->add_option("-d,--dst", ed.dst)->required();
+    const auto subcmd_extract_dds = app.add_subcommand("extract_dds", "Image::ExtractDds")->fallthrough();
+    subcmd_extract_dds->add_option("-s,--src", extract_dds_opts.src)->required();
+    subcmd_extract_dds->add_option("-d,--dst", extract_dds_opts.dst)->required();
 
     try {
         app.require_subcommand(1);
@@ -78,7 +78,8 @@ int core(int argc, T **argv) {
         std::cerr << app.help() << std::endl;
         return app.exit(e);
     }
-    spdlog::level::level_enum lvl = spdlog::level::info;
+
+    spdlog::level::level_enum lvl;
     if (log_level == "trace")    lvl = spdlog::level::trace;
     else if (log_level == "debug")   lvl = spdlog::level::debug;
     else if (log_level == "info")    lvl = spdlog::level::info;
@@ -93,23 +94,23 @@ int core(int argc, T **argv) {
     spdlog::set_level(lvl);
 
     try {
-        if (scAn->parsed()) {
+        if (subcmd_audio_normalize->parsed()) {
             Audio::Initialize();
-            ret = Audio::Normalize(an.src, an.dst, an.offset) ? RET_OK : RET_NOOP;
-        } else if (scAi->parsed()) {
+            ret = Audio::Normalize(audio_normalize_opts.src, audio_normalize_opts.dst, audio_normalize_opts.offset) ? RET_OK : RET_NOOP;
+        } else if (subcmd_audio_ensure_valid->parsed()) {
             Audio::Initialize();
-            Audio::EnsureValid(ai.src);
-        } else if (scIi->parsed()) {
+            Audio::EnsureValid(audio_ensure_valid_opts.src);
+        } else if (subcmd_image_ensure_valid->parsed()) {
             Image::Initialize();
-            Image::EnsureValid(ii.src);
-        } else if (scCj->parsed()) {
+            Image::EnsureValid(image_ensure_valid_opts.src);
+        } else if (subcmd_convert_jacket->parsed()) {
             Image::Initialize();
-            Image::ConvertJacket(cj.src, cj.dst);
-        } else if (scCs->parsed()) {
+            Image::ConvertJacket(convert_jacket_opts.src, convert_jacket_opts.dst);
+        } else if (subcmd_convert_stage->parsed()) {
             Image::Initialize();
-            Image::ConvertStage(cs.bg, cs.stsrc, cs.stdst, cs.fx);
-        } else if (scEd->parsed()) {
-            Image::ExtractDds(ed.src, ed.dst);
+            Image::ConvertStage(convert_stage_opts.bg, convert_stage_opts.stsrc, convert_stage_opts.stdst, convert_stage_opts.fx);
+        } else if (subcmd_extract_dds->parsed()) {
+            Image::ExtractDds(extract_dds_opts.src, extract_dds_opts.dst);
         } else {
             throw std::runtime_error("No subcommand specified.");
         }

@@ -51,7 +51,7 @@ void Ensure(const bool cond, fmt::format_string<Args...> msg_fmt, Args &&... arg
 
 namespace Audio {
 
-// ffmpeg uses utf8 path on windows
+// ffmpeg uses utf8 path on Windows
 inline std::string str(const fs::path &path) {
 #ifdef _WIN32
     auto s = path.u8string();
@@ -160,7 +160,7 @@ inline AVCodecContextPtr OpenEncoder(const NormalizeFormat &params) {
     ectx->codec_type = AVMEDIA_TYPE_AUDIO;
     ectx->codec_id = params.CodecId;
     ectx->sample_rate = params.SampleRate;
-    av_channel_layout_default(&ectx->ch_layout, params.Channels);
+    av_channel_layout_default(&ectx->ch_layout, 2);
     ectx->sample_fmt = params.SampleFormat;
     ectx->bit_rate = 0;
     ectx->time_base = AVRational{1, params.SampleRate};

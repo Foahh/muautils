@@ -14,6 +14,7 @@ extern "C" {
 
 namespace Audio {
 
+// Note: Only supports stereo output for now
 bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double offset, const NormalizeFormat &target) {
     const auto meta = Analyze(srcPath);
     const double gain = target.Loudness - meta.Loudness;
@@ -24,7 +25,7 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
 
     const bool needTransform = dctx->codec_id != target.CodecId;
     const bool needFormat = meta.SampleRate != target.SampleRate || meta.SampleFormat != target.SampleFormat;
-    const bool needChannels = meta.Channels != target.Channels;
+    const bool needChannels = meta.Channels != 2;
     const bool needVolume = std::abs(gain) >= target.GainTolerance;
     const bool needLimit = std::abs(meta.TruePeak - target.Limit) >= target.TruePeakTolerance;
     const bool needOffset = std::abs(offset) >= target.OffsetTolerance;
@@ -64,7 +65,6 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
                              FMT_PCM_S16LE_8LU.Attack, FMT_PCM_S16LE_8LU.Release);
     }
 
-    // TODO: channel_layouts=stereo
     flast = Filter(graph, flast, "aformat", "aformat",
                          "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
                          av_get_sample_fmt_name(FMT_PCM_S16LE_8LU.SampleFormat),

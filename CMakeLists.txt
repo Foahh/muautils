@@ -12,13 +12,14 @@ endif ()
 
 # Common Library
 add_library(common_lib INTERFACE)
+target_sources(common_lib PUBLIC src/lib.hpp)
 find_package(spdlog CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 target_link_libraries(common_lib INTERFACE spdlog::spdlog fmt::fmt)
 
 # Audio Library
 add_library(audio_lib INTERFACE)
-target_sources(audio_lib PUBLIC src/audio/convert.cpp src/audio/audio.cpp)
+target_sources(audio_lib PUBLIC src/audio/convert.cpp src/audio/convert.hpp src/audio/audio.cpp src/audio/audio.hpp src/audio/utils.hpp)
 find_package(FFMPEG REQUIRED)
 target_include_directories(audio_lib INTERFACE ${FFMPEG_INCLUDE_DIRS})
 target_link_directories(audio_lib INTERFACE ${FFMPEG_LIBRARY_DIRS})
@@ -26,15 +27,13 @@ target_link_libraries(audio_lib INTERFACE ${FFMPEG_LIBRARIES} common_lib)
 
 # Image Library
 add_library(image_lib INTERFACE)
-target_sources(image_lib PUBLIC src/image/convert.cpp src/image/image.cpp)
+target_sources(image_lib PUBLIC src/image/convert.cpp src/image/image.cpp src/image/image.hpp src/image/utils.hpp)
 find_package(directxtex CONFIG REQUIRED)
 find_package(freeimage CONFIG REQUIRED)
 target_link_libraries(image_lib INTERFACE common_lib Microsoft::DirectXTex freeimage::FreeImage freeimage::FreeImagePlus)
 
 # Main Executables
-add_executable(mua src/main.cpp
-        src/audio/convert.hpp
-)
+add_executable(mua src/main.cpp)
 find_package(CLI11 CONFIG REQUIRED)
 target_link_libraries(mua PRIVATE audio_lib image_lib CLI11::CLI11)
 

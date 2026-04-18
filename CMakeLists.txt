@@ -18,7 +18,8 @@ find_package(FFMPEG REQUIRED)
 add_library(mua_audio STATIC
         src/audio/convert.cpp
         src/audio/audio.cpp
-        src/audio/detail/format.cpp)
+        src/audio/detail/format.cpp
+        src/audio/detail/filter.cpp)
 target_link_libraries(mua_audio PUBLIC mua_common)
 
 target_include_directories(mua_audio PRIVATE ${FFMPEG_INCLUDE_DIRS})

@@ -14,6 +14,7 @@ extern "C" {
 
 #include "audio.hpp"
 #include "audio/detail/error.hpp"
+#include "audio/detail/filter.hpp"
 #include "audio/detail/format.hpp"
 #include "audio/detail/raii.hpp"
 #include "lib.hpp"
@@ -34,57 +35,12 @@ using detail::GetBestAudioStream;
 using detail::OpenDecoder;
 using detail::OpenEncoder;
 using detail::OpenOutputStream;
+
+using detail::Filter;
+using detail::BufferSource;
 }
 
 namespace Audio {
-
-inline AVFilterContext *Filter(const AVFilterGraphPtr &graph, const char *name, const char *instance) {
-    const AVFilter *filt = avfilter_get_by_name(name);
-    av::Ensure(filt, "Filter not found: {}", name);
-    AVFilterContext *ctx = avfilter_graph_alloc_filter(graph.get(), filt, instance);
-    av::Ensure(ctx, "Failed to allocate filter context");
-    return ctx;
-}
-
-inline AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from, const char *name,
-                               const char *instance, const char *opts = nullptr) {
-    AVFilterContext *ctx = Filter(graph, name, instance);
-
-    auto ret = avfilter_init_str(ctx, opts);
-    av::Assert(ret, "Failed to initialize filter: {}", name);
-
-    ret = avfilter_link(from, 0, ctx, 0);
-    av::Assert(ret, "Failed to link filter: {}", name);
-
-    return ctx;
-}
-
-template <typename... Args>
-AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from, const char *name, const char *instance,
-                        fmt::format_string<Args...> fmt, Args &&...args) {
-    const auto opts = fmt::format(fmt, std::forward<Args>(args)...);
-    return Filter(graph, from, name, instance, opts.c_str());
-}
-
-inline AVFilterContext *BufferSource(const AVFilterGraphPtr &graph, const AVCodecContextPtr &codec) {
-    AVFilterContext *src = Filter(graph, "abuffer", "in");
-    AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
-    av::Ensure(par, "Failed to allocate buffer source parameters");
-
-    par->format = codec->sample_fmt;
-    par->sample_rate = codec->sample_rate;
-    av_channel_layout_copy(&par->ch_layout, &codec->ch_layout);
-    par->time_base = codec->time_base;
-
-    auto ret = av_buffersrc_parameters_set(src, par);
-    av::Assert(ret, "Failed to set parameters for buffer source: {}", src->filter->name);
-
-    ret = avfilter_init_str(src, nullptr);
-    av::Assert(ret, "Failed to initialize buffer source: {}", src->filter->name);
-
-    av_freep(&par);
-    return src;
-}
 
 inline void Encode(const AVFramePtr &frm, const AVCodecContextPtr &ectx, const AVFormatOutputContextPtr &ofmt,
                    const AVPacketPtr &pkt, const AVStream *ist) {

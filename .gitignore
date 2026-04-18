@@ -411,6 +411,7 @@ FodyWeavers.xsd
 *.msp
 
 tests/assets
+tests/assets/tmp/
 cmake-build-*/
 
 .idea/

@@ -27,7 +27,7 @@ target_include_directories(mua_audio PRIVATE ${FFMPEG_INCLUDE_DIRS})
 target_link_directories(mua_audio PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(mua_audio PRIVATE ${FFMPEG_LIBRARIES})
 
-find_package(directxtex CONFIG REQUIRED)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/bc7enc.cmake")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(VIPS_CPP REQUIRED IMPORTED_TARGET vips-cpp)
 add_library(mua_image STATIC
@@ -36,7 +36,8 @@ add_library(mua_image STATIC
         src/image/detail/dds.cpp
         src/image/image.cpp)
 target_link_libraries(mua_image PUBLIC mua_common)
-target_link_libraries(mua_image PRIVATE Microsoft::DirectXTex PkgConfig::VIPS_CPP)
+
+target_link_libraries(mua_image PRIVATE $<BUILD_INTERFACE:bc7enc> PkgConfig::VIPS_CPP)
 
 add_executable(mua src/main.cpp src/cli/cli.cpp)
 find_package(CLI11 CONFIG REQUIRED)

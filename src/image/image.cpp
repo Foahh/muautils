@@ -38,16 +38,12 @@ void Image::ConvertStage(const fs::path &bgSrcPath, const fs::path &stSrcPath,
                           const fs::path &stDstPath,
                           const std::array<fs::path, 4> &fxSrcPaths) {
     const auto stAfb = ReadFileData(stSrcPath);
-    const auto bgBlob = ConvertBackground(bgSrcPath);
-    const auto fxBlob = ConvertEffect(fxSrcPaths);
-
-    const auto bgDds = std::span(bgBlob.GetBufferPointer(),
-                                  bgBlob.GetBufferPointer() + bgBlob.GetBufferSize());
-    const auto fxDds = std::span(fxBlob.GetBufferPointer(),
-                                  fxBlob.GetBufferPointer() + fxBlob.GetBufferSize());
+    const auto bgDds = ConvertBackground(bgSrcPath);
+    const auto fxDds = ConvertEffect(fxSrcPaths);
 
     const auto stChunks = LocateDdsChunks(stAfb);
-    ReplaceChunks(stAfb, stDstPath, stChunks, {bgDds, fxDds});
+    ReplaceChunks(stAfb, stDstPath, stChunks,
+                  {std::span<const uint8_t>(bgDds), std::span<const uint8_t>(fxDds)});
 }
 
 void Image::ExtractDds(const fs::path &srcPath, const fs::path &dstFolder) {

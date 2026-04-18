@@ -3,7 +3,6 @@
 include(CMakeFindDependencyMacro)
 find_dependency(spdlog CONFIG)
 find_dependency(fmt CONFIG)
-find_dependency(directxtex CONFIG)
 find_package(FFMPEG REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(VIPS_CPP REQUIRED IMPORTED_TARGET vips-cpp)

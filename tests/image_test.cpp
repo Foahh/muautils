@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <vector>
 
 #include "image/image.hpp"
 
@@ -40,6 +41,21 @@ TEST_CASE("ConvertJacket") {
         const auto dstPath = GetOutputPath(L"converted_invalid_jacket.dds");
         REQUIRE_THROWS(ConvertJacket(srcPath, dstPath));
         REQUIRE_FALSE(std::filesystem::exists(dstPath));
+    }
+
+    SECTION("Matches committed BC1 fixture (tests/assets/jacket_1_bc1.dds)") {
+        const auto srcPath = GetInputPath(L"1.jpg");
+        const auto fixturePath = GetInputPath(L"jacket_1_bc1.dds");
+        const auto dstPath = GetOutputPath(L"jacket_fixture_check.dds");
+        REQUIRE(std::filesystem::exists(fixturePath));
+        REQUIRE_NOTHROW(ConvertJacket(srcPath, dstPath));
+
+        auto read_all = [](const fs::path &p) {
+            std::ifstream in(p, std::ios::binary);
+            REQUIRE(in);
+            return std::vector<uint8_t>(std::istreambuf_iterator<char>(in), {});
+        };
+        REQUIRE(read_all(fixturePath) == read_all(dstPath));
     }
 }
 

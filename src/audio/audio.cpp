@@ -87,10 +87,15 @@ NormalizePlan planNormalize(const Audio::detail::AudioStreamMeta &meta,
     return p;
 }
 
-AVFilterContext *buildChain(const Audio::detail::AVFilterGraphPtr &graph,
-                            const Audio::detail::AVCodecContextPtr &dctx,
-                            const NormalizePlan &plan,
-                            double offset) {
+struct NormalizeChain {
+    AVFilterContext *src;
+    AVFilterContext *sink;
+};
+
+NormalizeChain buildChain(const Audio::detail::AVFilterGraphPtr &graph,
+                          const Audio::detail::AVCodecContextPtr &dctx,
+                          const NormalizePlan &plan,
+                          double offset) {
     using namespace Audio::detail;
 
     AVFilterContext *fsrc = BufferSource(graph, dctx);
@@ -124,7 +129,8 @@ AVFilterContext *buildChain(const Audio::detail::AVFilterGraphPtr &graph,
                    "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
                    av_get_sample_fmt_name(DefaultTarget.SampleFormat), DefaultTarget.SampleRate);
 
-    return Filter(graph, flast, "abuffersink", "abuffersink");
+    AVFilterContext *fsnk = Filter(graph, flast, "abuffersink", "abuffersink");
+    return {fsrc, fsnk};
 }
 
 } // namespace
@@ -151,24 +157,17 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
     const AVFilterGraphPtr graph(avfilter_graph_alloc());
     av::Require(graph.get(), "Failed to allocate filter graph");
 
-    AVFilterContext *fsnk = buildChain(graph, dctx, plan, offset);
+    const auto chain = buildChain(graph, dctx, plan, offset);
 
     ret = avfilter_graph_config(graph.get(), nullptr);
     av::Check(ret, "Failed to configure filter graph.");
 
-    AVFilterContext *fsrc = nullptr;
-    for (unsigned i = 0; i < graph->nb_filters; ++i) {
-        if (std::string(graph->filters[i]->filter->name) == "abuffer") {
-            fsrc = graph->filters[i];
-            break;
-        }
-    }
-    av::Require(fsrc, "Could not locate buffer source in graph");
+    av::Require(chain.src && chain.sink, "Failed to build normalize filter chain");
 
     const AVPacketPtr pkt(av_packet_alloc());
     av::Require(pkt.get(), "Failed to allocate packet");
 
-    RunGraph(ifmt, ist, dctx, fsrc, fsnk,
+    RunGraph(ifmt, ist, dctx, chain.src, chain.sink,
              [&](AVFrame *f) {
                  AVFramePtr owned(av_frame_alloc());
                  av::Require(owned.get(), "Failed to allocate frame");

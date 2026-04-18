@@ -73,34 +73,7 @@ Audio::AudioStreamMeta Audio::Analyze(const fs::path &path) {
     auto ret = avfilter_graph_config(graph.get(), nullptr);
     av::Assert(ret, "Failed to configure filter graph for audio analysis");
 
-    const AVPacketPtr pkt(av_packet_alloc());
-    const AVFramePtr dfrm(av_frame_alloc());
-    const AVFramePtr ffrm(av_frame_alloc());
-
-    av::Ensure(pkt && dfrm && ffrm, "Failed to allocate packet or frame");
-
-    while (av_read_frame(ifmt.get(), pkt.get()) >= 0) {
-        if (pkt->stream_index != ist->index) {
-            av_packet_unref(pkt.get());
-            continue;
-        }
-
-        ret = avcodec_send_packet(dctx.get(), pkt.get());
-        av::Assert(ret, "Failed to send packet to decoder: {}", dctx->codec->name);
-        av_packet_unref(pkt.get());
-        Decode(dctx, fsrc, fsnk, dfrm, ffrm);
-    }
-
-    ret = avcodec_send_packet(dctx.get(), nullptr);
-    av::Assert(ret, "Failed to send end-of-stream packet to decoder: {}", dctx->codec->name);
-    Decode(dctx, fsrc, fsnk, dfrm, ffrm);
-
-    ret = av_buffersrc_add_frame(fsrc, nullptr);
-    av::Assert(ret, "Failed to add end-of-stream frame to buffer source: {}", fsrc->filter->name);
-
-    while (av_buffersink_get_frame(fsnk, ffrm.get()) == 0) {
-        av_frame_unref(ffrm.get());
-    }
+    RunGraph(ifmt, ist, dctx, fsrc, fsnk, [](AVFrame *) { /* no-op: ebur128 accumulates internally */ });
 
     ret = av_opt_get_double(ebur->priv, "integrated", 0, &meta.Loudness);
     av::Assert(ret, "Failed to get integrated loudness from ebur128 filter: {}", ebur->filter->name);

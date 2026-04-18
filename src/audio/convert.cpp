@@ -78,33 +78,15 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
     av::Assert(ret, "Failed to configure filter graph.");
 
     const AVPacketPtr pkt(av_packet_alloc());
-    const AVFramePtr dfrm(av_frame_alloc());
-    const AVFramePtr ffrm(av_frame_alloc());
-    av::Ensure(pkt && dfrm && ffrm, "Failed to allocate packet or frame");
+    av::Ensure(pkt.get(), "Failed to allocate packet");
 
-    while (av_read_frame(ifmt.get(), pkt.get()) >= 0) {
-        if (pkt->stream_index != ist->index) {
-            av_packet_unref(pkt.get());
-            continue;
-        }
-
-        ret = avcodec_send_packet(dctx.get(), pkt.get());
-        av::Assert(ret, "Failed to send packet to decoder: {}", dctx->codec->name);
-
-        av_packet_unref(pkt.get());
-        DecodeEncode(fsrc, fsnk, dctx, ist, ectx, ofmt, pkt, dfrm, ffrm);
-    }
-
-    ret = avcodec_send_packet(dctx.get(), nullptr);
-    av::Assert(ret, "Failed to send end-of-stream packet to decoder: {} ", dctx->codec->name);
-    DecodeEncode(fsrc, fsnk, dctx, ist, ectx, ofmt, pkt, dfrm, ffrm);
-
-    ret = av_buffersrc_add_frame(fsrc, nullptr);
-    av::Assert(ret, "Failed to add end-of-stream frame to buffer source: {}", fsrc->filter->name);
-    while (av_buffersink_get_frame(fsnk, ffrm.get()) == 0) {
-        Encode(ffrm, ectx, ofmt, pkt, ist);
-        av_frame_unref(ffrm.get());
-    }
+    RunGraph(ifmt, ist, dctx, fsrc, fsnk,
+             [&](AVFrame *f) {
+                 AVFramePtr owned(av_frame_alloc());
+                 av::Ensure(owned.get(), "Failed to allocate frame");
+                 av_frame_move_ref(owned.get(), f);
+                 Encode(owned, ectx, ofmt, pkt, ist);
+             });
 
     ret = avcodec_send_frame(ectx.get(), nullptr);
     av::Assert(ret, "Failed to send end-of-stream frame to encoder: {}", ectx->codec->name);

@@ -47,8 +47,8 @@ TEST_CASE("ConvertStage") {
     const auto nfDstPath = GetOutputPath(L"converted_nf.afb");
     SECTION("All") {
         const auto bgSrcPath = GetInputPath(L"bg.png");
-        const std::array fxSrcPaths = {
-                GetInputPath(L"1.jpg"), GetInputPath(L"2.jpg"), GetInputPath(L"3.jpg"), GetInputPath(L"4.jpg")};
+        const std::array fxSrcPaths = {GetInputPath(L"1.jpg"), GetInputPath(L"2.jpg"), GetInputPath(L"3.jpg"),
+                                       GetInputPath(L"4.jpg")};
         const auto stDstPath = GetOutputPath(L"converted_stage.afb");
 
         REQUIRE_NOTHROW(ConvertStage(bgSrcPath, nfDstPath, stDstPath, fxSrcPaths));
@@ -57,8 +57,8 @@ TEST_CASE("ConvertStage") {
 
     SECTION("Partial") {
         const auto bgSrcPath = GetInputPath(L"bg.png");
-        const std::array<std::filesystem::path, 4> fxSrcPaths = {GetInputPath(L"1.jpg"), {},
-                                                                                GetInputPath(L"3.jpg"), {}};
+        const std::array<std::filesystem::path, 4> fxSrcPaths = {
+            GetInputPath(L"1.jpg"), {}, GetInputPath(L"3.jpg"), {}};
         const auto stDstPath = GetOutputPath(L"converted_stage_with_missing_effects.afb");
 
         REQUIRE_NOTHROW(ConvertStage(bgSrcPath, nfDstPath, stDstPath, fxSrcPaths));
@@ -76,7 +76,7 @@ TEST_CASE("ExtractDdsFromAfb") {
     REQUIRE_NOTHROW(ExtractDds(srcPath, dstFolder));
 
     bool foundDdsFile = false;
-    for (const auto &entry: std::filesystem::directory_iterator(dstFolder)) {
+    for (const auto &entry : std::filesystem::directory_iterator(dstFolder)) {
         if (entry.path().extension() == ".dds") {
             foundDdsFile = true;
             break;

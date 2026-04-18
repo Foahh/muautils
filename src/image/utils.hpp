@@ -1,18 +1,21 @@
 #pragma once
 
 #include "lib.hpp"
-#include "utils.hpp"
 
 #include <filesystem>
-#include <span>
 #include <fmt/format.h>
 #include <fstream>
 #include <optional>
+#include <span>
+#include <string>
 #include <vector>
 
-#include <FreeImagePlus.h>
-
 namespace Image {
+
+inline std::string PathToVipsUtf8(const fs::path &path) {
+    const std::u8string u8 = path.u8string();
+    return {reinterpret_cast<const char *>(u8.data()), u8.size()};
+}
 
 inline std::optional<size_t> FindChunks(const std::span<const uint8_t> haystack, const std::span<const uint8_t> needle,
                                         const size_t start) {
@@ -29,10 +32,10 @@ inline std::optional<size_t> FindChunks(const std::span<const uint8_t> haystack,
     return pos;
 }
 
-inline std::vector<std::pair<size_t, size_t> > LocateChunks(const std::span<const uint8_t> data,
-                                                            const std::span<const uint8_t> header,
-                                                            const std::span<const uint8_t> footer) {
-    std::vector<std::pair<size_t, size_t> > chunks;
+inline std::vector<std::pair<size_t, size_t>> LocateChunks(const std::span<const uint8_t> data,
+                                                           const std::span<const uint8_t> header,
+                                                           const std::span<const uint8_t> footer) {
+    std::vector<std::pair<size_t, size_t>> chunks;
     size_t currentPos = 0;
 
     while (true) {
@@ -69,7 +72,7 @@ inline std::vector<std::pair<size_t, size_t> > LocateChunks(const std::span<cons
 }
 
 inline void ExtractChunks(const std::span<const uint8_t> data, const fs::path &dstFolder, const fs::path &baseName,
-                          const fs::path &extension, const std::vector<std::pair<size_t, size_t> > &chunks) {
+                          const fs::path &extension, const std::vector<std::pair<size_t, size_t>> &chunks) {
     fs::create_directories(dstFolder);
 
     for (size_t i = 0; i < chunks.size(); ++i) {
@@ -97,8 +100,8 @@ inline void ExtractChunks(const std::span<const uint8_t> data, const fs::path &d
 }
 
 inline void ReplaceChunks(const std::span<const uint8_t> data, const fs::path &dstPath,
-                          const std::vector<std::pair<size_t, size_t> > &chunks,
-                          const std::vector<std::optional<std::span<const uint8_t> > > &replacements) {
+                          const std::vector<std::pair<size_t, size_t>> &chunks,
+                          const std::vector<std::optional<std::span<const uint8_t>>> &replacements) {
     if (replacements.size() < chunks.size()) {
         const auto msg = fmt::format("Replacements size {} < chunks size {}", replacements.size(), chunks.size());
         throw std::out_of_range(msg);
@@ -143,46 +146,10 @@ inline std::vector<uint8_t> ReadFileData(const fs::path &path) {
     return buffer;
 }
 
-inline std::vector<std::pair<size_t, size_t> > LocateDdsChunks(const std::span<const uint8_t> data) {
+inline std::vector<std::pair<size_t, size_t>> LocateDdsChunks(const std::span<const uint8_t> data) {
     constexpr uint8_t ddsHeader[] = {'D', 'D', 'S', ' '};
     constexpr uint8_t ddsStopSign[] = {'P', 'O', 'F', '0'};
     return LocateChunks(data, ddsHeader, ddsStopSign);
-}
-
-inline FREE_IMAGE_FORMAT GetFreeImageFormat(const fs::path &path) {
-#ifdef _WIN32
-    const auto fif = FreeImage_GetFileTypeU(path.c_str());
-    return fif != FIF_UNKNOWN ? fif : FreeImage_GetFIFFromFilenameU(path.c_str());
-#else
-    const auto fif = FreeImage_GetFileType(path.c_str());
-    return fif != FIF_UNKNOWN ? fif : FreeImage_GetFIFFromFilename(path.c_str());
-#endif
-}
-
-inline bool LoadFipImage(fipImage &img, const fs::path &path) {
-#ifdef _WIN32
-    return img.loadU(path.c_str());
-#else
-    return img.load(path.c_str());
-#endif
-}
-
-inline fipImage LoadFip32Image(const fs::path &srcPath) {
-    fipImage img;
-    if (!LoadFipImage(img, srcPath)) {
-        throw lib::FileError(srcPath, "Failed to load image");
-    }
-    if (img.getImageType() != FIT_BITMAP || img.getBitsPerPixel() != 32) {
-        if (!img.convertTo32Bits()) {
-            throw lib::FileError(srcPath, "Failed to convert image to 32bpp");
-        }
-    }
-    return img;
-}
-
-inline bool IsImageValid(const fs::path &srcPath) {
-    const auto fif = GetFreeImageFormat(srcPath);
-    return fif != FIF_UNKNOWN && FreeImage_FIFSupportsReading(fif);
 }
 
 } // namespace Image

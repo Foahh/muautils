@@ -3,23 +3,22 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavfilter/avfilter.h>
+#include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
 #include <libavformat/avformat.h>
 #include <libavutil/channel_layout.h>
-#include <libavfilter/buffersink.h>
 }
 
-#include <memory>
 #include <fmt/format.h>
+#include <memory>
 
-#include "lib.hpp"
 #include "audio.hpp"
+#include "lib.hpp"
 #include "utils.hpp"
-
 
 namespace av {
 template <typename... Args>
-void Assert(const int err, const fs::path& path, fmt::format_string<Args...> msg_fmt, Args&&... args) {
+void Assert(const int err, const fs::path &path, fmt::format_string<Args...> msg_fmt, Args &&...args) {
     if (err < 0) {
         char txt[1024];
         av_strerror(err, txt, sizeof(txt));
@@ -29,8 +28,7 @@ void Assert(const int err, const fs::path& path, fmt::format_string<Args...> msg
     }
 }
 
-template <typename... Args>
-void Assert(const int err, fmt::format_string<Args...> msg_fmt, Args&&... args) {
+template <typename... Args> void Assert(const int err, fmt::format_string<Args...> msg_fmt, Args &&...args) {
     if (err < 0) {
         char txt[1024];
         av_strerror(err, txt, sizeof(txt));
@@ -40,14 +38,13 @@ void Assert(const int err, fmt::format_string<Args...> msg_fmt, Args&&... args) 
     }
 }
 
-template <typename... Args>
-void Ensure(const bool cond, fmt::format_string<Args...> msg_fmt, Args &&... args) {
+template <typename... Args> void Ensure(const bool cond, fmt::format_string<Args...> msg_fmt, Args &&...args) {
     if (!cond) {
         const auto msg = fmt::format(msg_fmt, std::forward<Args>(args)...);
         throw std::runtime_error(msg);
     }
 }
-}
+} // namespace av
 
 namespace Audio {
 
@@ -62,12 +59,16 @@ inline std::string str(const fs::path &path) {
 }
 
 struct AVCharDeleter {
-    void operator()(char *ptr) const { av_freep(&ptr); }
+    void operator()(char *ptr) const {
+        av_freep(&ptr);
+    }
 };
 using AVCharPtr = std::unique_ptr<char, AVCharDeleter>;
 
 struct AVFormatInputContextDeleter {
-    void operator()(AVFormatContext *ctx) const { avformat_close_input(&ctx); }
+    void operator()(AVFormatContext *ctx) const {
+        avformat_close_input(&ctx);
+    }
 };
 using AVFormatInputContextPtr = std::unique_ptr<AVFormatContext, AVFormatInputContextDeleter>;
 
@@ -85,22 +86,30 @@ struct AVFormatOutputContextDeleter {
 using AVFormatOutputContextPtr = std::unique_ptr<AVFormatContext, AVFormatOutputContextDeleter>;
 
 struct AVCodecContextDeleter {
-    void operator()(AVCodecContext *ctx) const { avcodec_free_context(&ctx); }
+    void operator()(AVCodecContext *ctx) const {
+        avcodec_free_context(&ctx);
+    }
 };
 using AVCodecContextPtr = std::unique_ptr<AVCodecContext, AVCodecContextDeleter>;
 
 struct AVFilterGraphDeleter {
-    void operator()(AVFilterGraph *graph) const { avfilter_graph_free(&graph); }
+    void operator()(AVFilterGraph *graph) const {
+        avfilter_graph_free(&graph);
+    }
 };
 using AVFilterGraphPtr = std::unique_ptr<AVFilterGraph, AVFilterGraphDeleter>;
 
 struct AVPacketDeleter {
-    void operator()(AVPacket *pkt) const { av_packet_free(&pkt); }
+    void operator()(AVPacket *pkt) const {
+        av_packet_free(&pkt);
+    }
 };
 using AVPacketPtr = std::unique_ptr<AVPacket, AVPacketDeleter>;
 
 struct AVFrameDeleter {
-    void operator()(AVFrame *frame) const { av_frame_free(&frame); }
+    void operator()(AVFrame *frame) const {
+        av_frame_free(&frame);
+    }
 };
 using AVFramePtr = std::unique_ptr<AVFrame, AVFrameDeleter>;
 
@@ -211,12 +220,11 @@ inline AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *f
 }
 
 template <typename... Args>
-AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from, const char *name,
-                               const char *instance, fmt::format_string<Args...> fmt, Args &&... args) {
+AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from, const char *name, const char *instance,
+                        fmt::format_string<Args...> fmt, Args &&...args) {
     const auto opts = fmt::format(fmt, std::forward<Args>(args)...);
     return Filter(graph, from, name, instance, opts.c_str());
 }
-
 
 inline AVFilterContext *BufferSource(const AVFilterGraphPtr &graph, const AVCodecContextPtr &codec) {
     AVFilterContext *src = Filter(graph, "abuffer", "in");

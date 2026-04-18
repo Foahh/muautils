@@ -65,15 +65,12 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
 
     if (needLimit) {
         spdlog::info("Applying limiter filter");
-        flast = Filter(graph, flast, "alimiter", "alimiter",
-                             "limit={}dB:attack={}:release={}:level=0", FMT_PCM_S16LE_8LU.Limit,
-                             FMT_PCM_S16LE_8LU.Attack, FMT_PCM_S16LE_8LU.Release);
+        flast = Filter(graph, flast, "alimiter", "alimiter", "limit={}dB:attack={}:release={}:level=0",
+                       FMT_PCM_S16LE_8LU.Limit, FMT_PCM_S16LE_8LU.Attack, FMT_PCM_S16LE_8LU.Release);
     }
 
-    flast = Filter(graph, flast, "aformat", "aformat",
-                         "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
-                         av_get_sample_fmt_name(FMT_PCM_S16LE_8LU.SampleFormat),
-                         FMT_PCM_S16LE_8LU.SampleRate);
+    flast = Filter(graph, flast, "aformat", "aformat", "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
+                   av_get_sample_fmt_name(FMT_PCM_S16LE_8LU.SampleFormat), FMT_PCM_S16LE_8LU.SampleRate);
 
     AVFilterContext *fsnk = Filter(graph, flast, "abuffersink", "abuffersink");
 
@@ -123,6 +120,5 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
 
     return true;
 }
-
 
 } // namespace Audio

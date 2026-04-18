@@ -9,7 +9,7 @@ namespace fs = std::filesystem;
 
 namespace lib {
 class FileError final : public std::exception {
-public:
+  public:
     FileError(const fs::path &path, const std::string &message) {
         m_msg = fmt::format("{} (while opening: {})", message, path.string());
     }
@@ -18,7 +18,7 @@ public:
         return m_msg.c_str();
     }
 
-private:
+  private:
     std::string m_msg;
 };
 

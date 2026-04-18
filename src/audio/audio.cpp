@@ -49,7 +49,7 @@ void Audio::Initialize() {
 void Audio::EnsureValid(const fs::path &path) {
     const auto fmt = OpenAVFormatInput(path);
     const auto ret = av_find_best_stream(fmt.get(), AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
-    av::Assert(ret, "No audio stream found in file");
+    av::Check(ret, "No audio stream found in file");
 }
 
 namespace {
@@ -143,12 +143,12 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
     OpenOutputStream(dst, ofmt, ectx);
 
     const AVFilterGraphPtr graph(avfilter_graph_alloc());
-    av::Ensure(graph.get(), "Failed to allocate filter graph");
+    av::Require(graph.get(), "Failed to allocate filter graph");
 
     AVFilterContext *fsnk = buildChain(graph, dctx, plan, offset);
 
     auto ret = avfilter_graph_config(graph.get(), nullptr);
-    av::Assert(ret, "Failed to configure filter graph.");
+    av::Check(ret, "Failed to configure filter graph.");
 
     AVFilterContext *fsrc = nullptr;
     for (unsigned i = 0; i < graph->nb_filters; ++i) {
@@ -157,30 +157,30 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
             break;
         }
     }
-    av::Ensure(fsrc, "Could not locate buffer source in graph");
+    av::Require(fsrc, "Could not locate buffer source in graph");
 
     const AVPacketPtr pkt(av_packet_alloc());
-    av::Ensure(pkt.get(), "Failed to allocate packet");
+    av::Require(pkt.get(), "Failed to allocate packet");
 
     RunGraph(ifmt, ist, dctx, fsrc, fsnk,
              [&](AVFrame *f) {
                  AVFramePtr owned(av_frame_alloc());
-                 av::Ensure(owned.get(), "Failed to allocate frame");
+                 av::Require(owned.get(), "Failed to allocate frame");
                  av_frame_move_ref(owned.get(), f);
                  Encode(owned, ectx, ofmt, pkt, ist);
              });
 
     ret = avcodec_send_frame(ectx.get(), nullptr);
-    av::Assert(ret, "Failed to send end-of-stream frame to encoder: {}", ectx->codec->name);
+    av::Check(ret, "Failed to send end-of-stream frame to encoder: {}", ectx->codec->name);
 
     while (avcodec_receive_packet(ectx.get(), pkt.get()) == 0) {
         ret = av_interleaved_write_frame(ofmt.get(), pkt.get());
-        av::Assert(ret, "Failed to write packet to output format: {}", ofmt->oformat->name);
+        av::Check(ret, "Failed to write packet to output format: {}", ofmt->oformat->name);
         av_packet_unref(pkt.get());
     }
 
     ret = av_write_trailer(ofmt.get());
-    av::Assert(ret, "Failed to write trailer to output format: {}", ofmt->oformat->name);
+    av::Check(ret, "Failed to write trailer to output format: {}", ofmt->oformat->name);
 
     return true;
 }

@@ -9,9 +9,9 @@ namespace Audio::detail {
 
 AVFilterContext *Filter(const AVFilterGraphPtr &graph, const char *name, const char *instance) {
     const AVFilter *filt = avfilter_get_by_name(name);
-    av::Ensure(filt, "Filter not found: {}", name);
+    av::Require(filt, "Filter not found: {}", name);
     AVFilterContext *ctx = avfilter_graph_alloc_filter(graph.get(), filt, instance);
-    av::Ensure(ctx, "Failed to allocate filter context");
+    av::Require(ctx, "Failed to allocate filter context");
     return ctx;
 }
 
@@ -20,10 +20,10 @@ AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from,
     AVFilterContext *ctx = Filter(graph, name, instance);
 
     auto ret = avfilter_init_str(ctx, opts);
-    av::Assert(ret, "Failed to initialize filter: {}", name);
+    av::Check(ret, "Failed to initialize filter: {}", name);
 
     ret = avfilter_link(from, 0, ctx, 0);
-    av::Assert(ret, "Failed to link filter: {}", name);
+    av::Check(ret, "Failed to link filter: {}", name);
 
     return ctx;
 }
@@ -31,7 +31,7 @@ AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from,
 AVFilterContext *BufferSource(const AVFilterGraphPtr &graph, const AVCodecContextPtr &codec) {
     AVFilterContext *src = Filter(graph, "abuffer", "in");
     AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
-    av::Ensure(par, "Failed to allocate buffer source parameters");
+    av::Require(par, "Failed to allocate buffer source parameters");
 
     par->format = codec->sample_fmt;
     par->sample_rate = codec->sample_rate;
@@ -39,10 +39,10 @@ AVFilterContext *BufferSource(const AVFilterGraphPtr &graph, const AVCodecContex
     par->time_base = codec->time_base;
 
     auto ret = av_buffersrc_parameters_set(src, par);
-    av::Assert(ret, "Failed to set parameters for buffer source: {}", src->filter->name);
+    av::Check(ret, "Failed to set parameters for buffer source: {}", src->filter->name);
 
     ret = avfilter_init_str(src, nullptr);
-    av::Assert(ret, "Failed to initialize buffer source: {}", src->filter->name);
+    av::Check(ret, "Failed to initialize buffer source: {}", src->filter->name);
 
     av_freep(&par);
     return src;

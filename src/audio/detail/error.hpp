@@ -12,7 +12,7 @@ extern "C" {
 namespace av {
 
 template <typename... Args>
-void Assert(const int err, const fs::path &path, fmt::format_string<Args...> msg_fmt, Args &&...args) {
+void Check(const int err, const fs::path &path, fmt::format_string<Args...> msg_fmt, Args &&...args) {
     if (err < 0) {
         char txt[1024];
         av_strerror(err, txt, sizeof(txt));
@@ -23,7 +23,7 @@ void Assert(const int err, const fs::path &path, fmt::format_string<Args...> msg
 }
 
 template <typename... Args>
-void Assert(const int err, fmt::format_string<Args...> msg_fmt, Args &&...args) {
+void Check(const int err, fmt::format_string<Args...> msg_fmt, Args &&...args) {
     if (err < 0) {
         char txt[1024];
         av_strerror(err, txt, sizeof(txt));
@@ -34,7 +34,7 @@ void Assert(const int err, fmt::format_string<Args...> msg_fmt, Args &&...args) 
 }
 
 template <typename... Args>
-void Ensure(const bool cond, fmt::format_string<Args...> msg_fmt, Args &&...args) {
+void Require(const bool cond, fmt::format_string<Args...> msg_fmt, Args &&...args) {
     if (!cond) {
         const auto msg = fmt::format(msg_fmt, std::forward<Args>(args)...);
         throw std::runtime_error(msg);

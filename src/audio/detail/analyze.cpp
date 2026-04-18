@@ -34,22 +34,22 @@ AudioStreamMeta Analyze(const fs::path &path) {
     }
 
     const AVFilterGraphPtr graph(avfilter_graph_alloc());
-    av::Ensure(graph.get(), "Failed to allocate filter graph");
+    av::Require(graph.get(), "Failed to allocate filter graph");
 
     AVFilterContext *fsrc = BufferSource(graph, dctx);
     AVFilterContext *ebur = Filter(graph, fsrc, "ebur128", "ebur128", "peak=true:framelog=quiet");
     AVFilterContext *fsnk = Filter(graph, ebur, "abuffersink", "out");
 
     auto ret = avfilter_graph_config(graph.get(), nullptr);
-    av::Assert(ret, "Failed to configure filter graph for audio analysis");
+    av::Check(ret, "Failed to configure filter graph for audio analysis");
 
     RunGraph(ifmt, ist, dctx, fsrc, fsnk, [](AVFrame *) { /* no-op: ebur128 accumulates internally */ });
 
     ret = av_opt_get_double(ebur->priv, "integrated", 0, &meta.Loudness);
-    av::Assert(ret, "Failed to get integrated loudness from ebur128 filter: {}", ebur->filter->name);
+    av::Check(ret, "Failed to get integrated loudness from ebur128 filter: {}", ebur->filter->name);
 
     ret = av_opt_get_double(ebur->priv, "true_peak", 0, &meta.TruePeak);
-    av::Assert(ret, "Failed to get true peak from ebur128 filter: {}", ebur->filter->name);
+    av::Check(ret, "Failed to get true peak from ebur128 filter: {}", ebur->filter->name);
 
     return meta;
 }

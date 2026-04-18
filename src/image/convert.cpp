@@ -21,8 +21,7 @@ namespace {
 using vips::VError;
 using vips::VImage;
 
-template <typename... Args>
-void Assert(const HRESULT hr, fmt::format_string<Args...> msg_fmt, Args &&...args) {
+template <typename... Args> void Assert(const HRESULT hr, fmt::format_string<Args...> msg_fmt, Args &&...args) {
     if (FAILED(hr)) {
         auto msg = fmt::format(msg_fmt, std::forward<Args>(args)...);
         auto m_msg = fmt::format("{} (HRESULT: 0x{:08X})", msg, hr);
@@ -41,9 +40,9 @@ void Assert(const HRESULT hr, const fs::path &path, fmt::format_string<Args...> 
 
 VImage LoadVipsImage(const fs::path &path) {
     try {
-        return VImage::new_from_file(PathToVipsUtf8(path).c_str(),
-                                     VImage::option()->set("access", VIPS_ACCESS_SEQUENTIAL)->set(
-                                         "fail_on", VIPS_FAIL_ON_ERROR));
+        return VImage::new_from_file(
+            PathToVipsUtf8(path).c_str(),
+            VImage::option()->set("access", VIPS_ACCESS_SEQUENTIAL)->set("fail_on", VIPS_FAIL_ON_ERROR));
     } catch (const VError &) {
         throw lib::FileError(path, "Failed to load image");
     }
@@ -85,7 +84,7 @@ std::vector<uint8_t> RgbaPixelsFrom(const VImage &img) {
 }
 
 class BlockImage {
-public:
+  public:
     explicit BlockImage(std::vector<uint8_t> rgba, const unsigned width, const unsigned height,
                         const DXGI_FORMAT format)
         : m_rgba(std::move(rgba)) {
@@ -122,7 +121,7 @@ public:
         Assert(hr, dstPath, "Failed to save DDS image");
     }
 
-private:
+  private:
     std::vector<uint8_t> m_rgba;
     DirectX::ScratchImage m_scratch;
 };
@@ -142,8 +141,7 @@ DirectX::Blob ConvertEffect(const std::array<fs::path, 4> &srcPaths) {
     constexpr int tileSize = 256;
     constexpr int canvasSize = tileSize * 2;
 
-    vips::VImage canvas =
-        vips::VImage::black(canvasSize, canvasSize, vips::VImage::option()->set("bands", 4));
+    vips::VImage canvas = vips::VImage::black(canvasSize, canvasSize, vips::VImage::option()->set("bands", 4));
     canvas = canvas.cast(VIPS_FORMAT_UCHAR);
     canvas = canvas.copy(vips::VImage::option()->set("interpretation", VIPS_INTERPRETATION_sRGB));
 

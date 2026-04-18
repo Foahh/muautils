@@ -3,10 +3,10 @@
 #include "lib.hpp"
 
 #include <filesystem>
-#include <span>
 #include <fmt/format.h>
 #include <fstream>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -32,10 +32,10 @@ inline std::optional<size_t> FindChunks(const std::span<const uint8_t> haystack,
     return pos;
 }
 
-inline std::vector<std::pair<size_t, size_t> > LocateChunks(const std::span<const uint8_t> data,
-                                                            const std::span<const uint8_t> header,
-                                                            const std::span<const uint8_t> footer) {
-    std::vector<std::pair<size_t, size_t> > chunks;
+inline std::vector<std::pair<size_t, size_t>> LocateChunks(const std::span<const uint8_t> data,
+                                                           const std::span<const uint8_t> header,
+                                                           const std::span<const uint8_t> footer) {
+    std::vector<std::pair<size_t, size_t>> chunks;
     size_t currentPos = 0;
 
     while (true) {
@@ -72,7 +72,7 @@ inline std::vector<std::pair<size_t, size_t> > LocateChunks(const std::span<cons
 }
 
 inline void ExtractChunks(const std::span<const uint8_t> data, const fs::path &dstFolder, const fs::path &baseName,
-                          const fs::path &extension, const std::vector<std::pair<size_t, size_t> > &chunks) {
+                          const fs::path &extension, const std::vector<std::pair<size_t, size_t>> &chunks) {
     fs::create_directories(dstFolder);
 
     for (size_t i = 0; i < chunks.size(); ++i) {
@@ -100,8 +100,8 @@ inline void ExtractChunks(const std::span<const uint8_t> data, const fs::path &d
 }
 
 inline void ReplaceChunks(const std::span<const uint8_t> data, const fs::path &dstPath,
-                          const std::vector<std::pair<size_t, size_t> > &chunks,
-                          const std::vector<std::optional<std::span<const uint8_t> > > &replacements) {
+                          const std::vector<std::pair<size_t, size_t>> &chunks,
+                          const std::vector<std::optional<std::span<const uint8_t>>> &replacements) {
     if (replacements.size() < chunks.size()) {
         const auto msg = fmt::format("Replacements size {} < chunks size {}", replacements.size(), chunks.size());
         throw std::out_of_range(msg);
@@ -146,7 +146,7 @@ inline std::vector<uint8_t> ReadFileData(const fs::path &path) {
     return buffer;
 }
 
-inline std::vector<std::pair<size_t, size_t> > LocateDdsChunks(const std::span<const uint8_t> data) {
+inline std::vector<std::pair<size_t, size_t>> LocateDdsChunks(const std::span<const uint8_t> data) {
     constexpr uint8_t ddsHeader[] = {'D', 'D', 'S', ' '};
     constexpr uint8_t ddsStopSign[] = {'P', 'O', 'F', '0'};
     return LocateChunks(data, ddsHeader, ddsStopSign);

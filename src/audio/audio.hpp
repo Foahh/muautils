@@ -29,13 +29,13 @@ struct NormalizeFormat {
     int SampleRate;
 
     double Loudness; // LUFS
-    double Limit; // dB
-    int Attack; // ms
-    int Release; // ms
+    double Limit;    // dB
+    int Attack;      // ms
+    int Release;     // ms
 
     double TruePeakTolerance; // dB
-    double GainTolerance; // dB
-    double OffsetTolerance; // seconds
+    double GainTolerance;     // dB
+    double OffsetTolerance;   // seconds
 };
 
 static constexpr NormalizeFormat FMT_PCM_S16LE_8LU = {

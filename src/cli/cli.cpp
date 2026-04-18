@@ -8,9 +8,9 @@
 #include <CLI/CLI.hpp>
 #include <array>
 #include <iostream>
-#include <stdexcept>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 
 namespace {
 
@@ -36,16 +36,14 @@ struct ConvertStageOpts {
     std::array<fs::path, 4> fx{};
 } convert_stage_opts;
 
-template <typename T>
-int run_impl(int argc, T **argv) {
+template <typename T> int run_impl(int argc, T **argv) {
     spdlog::set_default_logger(spdlog::stderr_color_mt("Manipulate"));
 
     CLI::App app;
     int ret = kExitOk;
 
     std::string log_level = "info";
-    app.add_option("--loglevel", log_level, "(trace, debug, info, warn, error, critical, off)")
-        ->default_val("info");
+    app.add_option("--loglevel", log_level, "(trace, debug, info, warn, error, critical, off)")->default_val("info");
 
     const auto subcmd_audio_normalize = app.add_subcommand("audio_normalize", "Audio::Normalize")->fallthrough();
     subcmd_audio_normalize->add_option("-s,--src", audio_normalize_opts.src)->required();
@@ -107,8 +105,9 @@ int run_impl(int argc, T **argv) {
     try {
         if (subcmd_audio_normalize->parsed()) {
             Audio::Initialize();
-            ret = Audio::Normalize(audio_normalize_opts.src, audio_normalize_opts.dst, audio_normalize_opts.offset) ? kExitOk
-                                                                                                                     : kExitNoop;
+            ret = Audio::Normalize(audio_normalize_opts.src, audio_normalize_opts.dst, audio_normalize_opts.offset)
+                      ? kExitOk
+                      : kExitNoop;
         } else if (subcmd_audio_ensure_valid->parsed()) {
             Audio::Initialize();
             Audio::EnsureValid(audio_ensure_valid_opts.src);
@@ -120,7 +119,8 @@ int run_impl(int argc, T **argv) {
             Image::ConvertJacket(convert_jacket_opts.src, convert_jacket_opts.dst);
         } else if (subcmd_convert_stage->parsed()) {
             Image::Initialize();
-            Image::ConvertStage(convert_stage_opts.bg, convert_stage_opts.stsrc, convert_stage_opts.stdst, convert_stage_opts.fx);
+            Image::ConvertStage(convert_stage_opts.bg, convert_stage_opts.stsrc, convert_stage_opts.stdst,
+                                convert_stage_opts.fx);
         } else if (subcmd_extract_dds->parsed()) {
             Image::ExtractDds(extract_dds_opts.src, extract_dds_opts.dst);
         } else {

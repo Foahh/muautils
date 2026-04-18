@@ -15,8 +15,12 @@ int main(const int argc, char *argv[]) {
 }
 
 TEST_CASE("EnsureValid") {
-    SECTION("Valid audio file") { REQUIRE_NOTHROW(EnsureValid(GetInputPath(L"1.mp3"))); }
-    SECTION("Invalid audio file") { REQUIRE_THROWS(EnsureValid(GetInputPath(L"a"))); }
+    SECTION("Valid audio file") {
+        REQUIRE_NOTHROW(EnsureValid(GetInputPath(L"1.mp3")));
+    }
+    SECTION("Invalid audio file") {
+        REQUIRE_THROWS(EnsureValid(GetInputPath(L"a")));
+    }
 }
 
 void PrintMeta(const AudioStreamMeta &meta) {

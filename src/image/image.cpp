@@ -28,7 +28,7 @@ void Image::Initialize() {
 
 void Image::EnsureValid(const fs::path &srcPath) {
     try {
-        vips::VImage::new_from_file(PathToVipsUtf8(srcPath).c_str(),
+        vips::VImage::new_from_file(lib::PathToUtf8(srcPath).c_str(),
                                     vips::VImage::option()->set("fail_on", VIPS_FAIL_ON_WARNING));
     } catch (const vips::VError &e) {
         throw lib::FileError(srcPath, fmt::format("Invalid image: {}", e.what()));

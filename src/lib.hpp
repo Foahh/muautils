@@ -20,7 +20,7 @@ namespace lib {
 class FileError final : public std::exception {
   public:
     FileError(const fs::path &path, const std::string &message) {
-        m_msg = fmt::format("{} (while opening: {})", message, path.string());
+        m_msg = fmt::format("{} (while opening: {})", message, PathToUtf8(path));
     }
 
     [[nodiscard]] const char *what() const noexcept override {

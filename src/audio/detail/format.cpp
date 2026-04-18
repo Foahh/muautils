@@ -42,9 +42,6 @@ AVCodecContextPtr OpenDecoder(const AVStream *st) {
     auto ret = avcodec_parameters_to_context(ctx.get(), st->codecpar);
     av::Check(ret, "Failed to copy codec parameters to context");
 
-    ret = avcodec_open2(ctx.get(), codec, nullptr);
-    av::Check(ret, "Failed to open decoder");
-
     if (ctx->ch_layout.order == AV_CHANNEL_ORDER_UNSPEC || ctx->ch_layout.nb_channels == 0) {
         int ch = ctx->ch_layout.nb_channels;
         if (ch == 0)
@@ -53,6 +50,9 @@ AVCodecContextPtr OpenDecoder(const AVStream *st) {
         av_channel_layout_uninit(&ctx->ch_layout);
         av_channel_layout_default(&ctx->ch_layout, ch);
     }
+
+    ret = avcodec_open2(ctx.get(), codec, nullptr);
+    av::Check(ret, "Failed to open decoder");
 
     return ctx;
 }

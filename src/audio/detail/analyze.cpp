@@ -32,10 +32,6 @@ AudioStreamMeta Analyze(const AVFormatInputContextPtr &ifmt, const AVStream *ist
     meta.SampleRate = dctx->sample_rate;
     meta.Channels = dctx->ch_layout.nb_channels;
 
-    if (av_sample_fmt_is_planar(dctx->sample_fmt) == 0 || dctx->sample_fmt != AV_SAMPLE_FMT_FLTP) {
-        dctx->request_sample_fmt = AV_SAMPLE_FMT_FLTP;
-    }
-
     const AVFilterGraphPtr graph(avfilter_graph_alloc());
     av::Require(graph.get(), "Failed to allocate filter graph");
 

@@ -3,7 +3,9 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavfilter/avfilter.h>
+#include <libavfilter/buffersrc.h>
 #include <libavformat/avformat.h>
+#include <libavutil/channel_layout.h>
 #include <libavutil/frame.h>
 #include <libavutil/mem.h>
 }
@@ -64,5 +66,15 @@ struct AVFrameDeleter {
     }
 };
 using AVFramePtr = std::unique_ptr<AVFrame, AVFrameDeleter>;
+
+struct AVBufferSrcParametersDeleter {
+    void operator()(AVBufferSrcParameters *par) const {
+        if (!par)
+            return;
+        av_channel_layout_uninit(&par->ch_layout);
+        av_freep(&par);
+    }
+};
+using AVBufferSrcParametersPtr = std::unique_ptr<AVBufferSrcParameters, AVBufferSrcParametersDeleter>;
 
 } // namespace Audio::detail

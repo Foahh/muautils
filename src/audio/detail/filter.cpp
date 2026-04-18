@@ -30,21 +30,23 @@ AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from, co
 
 AVFilterContext *BufferSource(const AVFilterGraphPtr &graph, const AVCodecContextPtr &codec) {
     AVFilterContext *src = Filter(graph, "abuffer", "in");
-    AVBufferSrcParameters *par = av_buffersrc_parameters_alloc();
-    av::Require(par, "Failed to allocate buffer source parameters");
+
+    AVBufferSrcParametersPtr par(av_buffersrc_parameters_alloc());
+    av::Require(par.get(), "Failed to allocate buffer source parameters");
 
     par->format = codec->sample_fmt;
     par->sample_rate = codec->sample_rate;
-    av_channel_layout_copy(&par->ch_layout, &codec->ch_layout);
     par->time_base = codec->time_base;
 
-    auto ret = av_buffersrc_parameters_set(src, par);
+    auto ret = av_channel_layout_copy(&par->ch_layout, &codec->ch_layout);
+    av::Check(ret, "Failed to copy channel layout to buffer source parameters");
+
+    ret = av_buffersrc_parameters_set(src, par.get());
     av::Check(ret, "Failed to set parameters for buffer source: {}", src->filter->name);
 
     ret = avfilter_init_str(src, nullptr);
     av::Check(ret, "Failed to initialize buffer source: {}", src->filter->name);
 
-    av_freep(&par);
     return src;
 }
 

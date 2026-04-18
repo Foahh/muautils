@@ -55,7 +55,12 @@ void RunGraph(const AVFormatInputContextPtr &input, const AVStream *stream, cons
     const AVFramePtr ffrm(av_frame_alloc());
     av::Require(pkt && dfrm && ffrm, "Failed to allocate packet or frame");
 
-    while (av_read_frame(input.get(), pkt.get()) >= 0) {
+    for (;;) {
+        const auto rret = av_read_frame(input.get(), pkt.get());
+        if (rret == AVERROR_EOF)
+            break;
+        av::Check(rret, "Failed to read frame from input");
+
         if (pkt->stream_index != stream->index) {
             av_packet_unref(pkt.get());
             continue;
@@ -79,7 +84,24 @@ void RunGraph(const AVFormatInputContextPtr &input, const AVStream *stream, cons
     }
 }
 
+// Writes one encoded packet to `output`, rescaling timestamps from `encoder`'s time_base
+// to `ost`'s time_base (which the muxer may have rewritten during avformat_write_header)
+// and tagging the packet with the correct output stream index. Unrefs the packet on success.
+void WritePacket(const AVPacketPtr &pkt, const AVCodecContextPtr &encoder, const AVFormatOutputContextPtr &output,
+                 const AVStream *ost);
+
+// Drains any packets the encoder currently has queued, forwarding them through WritePacket.
+// Stops on AVERROR(EAGAIN); propagates any other error.
+void DrainEncoder(const AVCodecContextPtr &encoder, const AVFormatOutputContextPtr &output, const AVStream *ost,
+                  const AVPacketPtr &pkt);
+
+// Pushes `frame` into `encoder` and drains any packets it produces. `src_frame_time_base`
+// is the time_base of `frame->pts` (typically the filter graph's abuffersink time_base).
 void Encode(const AVFramePtr &frame, const AVCodecContextPtr &encoder, const AVFormatOutputContextPtr &output,
-            const AVPacketPtr &pkt, AVRational src_frame_time_base);
+            const AVStream *ost, const AVPacketPtr &pkt, AVRational src_frame_time_base);
+
+// Signals end-of-stream to `encoder` and drains remaining packets through WritePacket.
+void FlushEncoder(const AVCodecContextPtr &encoder, const AVFormatOutputContextPtr &output, const AVStream *ost,
+                  const AVPacketPtr &pkt);
 
 } // namespace Audio::detail

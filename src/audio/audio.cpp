@@ -99,7 +99,8 @@ NormalizeChain buildChain(const Audio::detail::AVFilterGraphPtr &graph, const Au
     if (plan.needOffset) {
         spdlog::info("Applying offset filter");
         if (offset > 0.0) {
-            flast = Filter(graph, flast, "adelay", "adelay", "delays={}:all=1", offset * 1000);
+            const int64_t delayMs = llround(offset * 1000.0);
+            flast = Filter(graph, flast, "adelay", "adelay", "delays={}:all=1", delayMs);
         } else {
             const double cutSeconds = -offset;
             const int sr = dctx->sample_rate;
@@ -147,7 +148,7 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
 
     const auto ofmt = OpenAVFormatOutput(dst);
     const AVCodecContextPtr ectx = OpenEncoder(DefaultTarget);
-    OpenOutputStream(dst, ofmt, ectx);
+    AVStream *const ost = OpenOutputStream(dst, ofmt, ectx);
 
     const AVFilterGraphPtr graph(avfilter_graph_alloc());
     av::Require(graph.get(), "Failed to allocate filter graph");
@@ -159,6 +160,8 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
 
     av::Require(chain.src && chain.sink, "Failed to build normalize filter chain");
 
+    const AVRational sinkTb = av_buffersink_get_time_base(chain.sink);
+
     const AVPacketPtr pkt(av_packet_alloc());
     av::Require(pkt.get(), "Failed to allocate packet");
 
@@ -166,35 +169,10 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
         AVFramePtr owned(av_frame_alloc());
         av::Require(owned.get(), "Failed to allocate frame");
         av_frame_move_ref(owned.get(), f);
-        Encode(owned, ectx, ofmt, pkt, dctx->time_base);
+        Encode(owned, ectx, ofmt, ost, pkt, sinkTb);
     });
 
-    for (;;) {
-        ret = avcodec_send_frame(ectx.get(), nullptr);
-        if (ret != AVERROR(EAGAIN)) {
-            av::Check(ret, "Failed to send end-of-stream frame to encoder: {}", ectx->codec->name);
-            break;
-        }
-        while (avcodec_receive_packet(ectx.get(), pkt.get()) == 0) {
-            ret = av_interleaved_write_frame(ofmt.get(), pkt.get());
-            av::Check(ret, "Failed to write packet to output format: {}", ofmt->oformat->name);
-            av_packet_unref(pkt.get());
-        }
-    }
-
-    for (;;) {
-        ret = avcodec_receive_packet(ectx.get(), pkt.get());
-        if (ret == AVERROR_EOF) {
-            break;
-        }
-        if (ret == AVERROR(EAGAIN)) {
-            continue;
-        }
-        av::Check(ret, "Failed to receive packet while flushing encoder: {}", ectx->codec->name);
-        ret = av_interleaved_write_frame(ofmt.get(), pkt.get());
-        av::Check(ret, "Failed to write packet to output format: {}", ofmt->oformat->name);
-        av_packet_unref(pkt.get());
-    }
+    FlushEncoder(ectx, ofmt, ost, pkt);
 
     ret = av_write_trailer(ofmt.get());
     av::Check(ret, "Failed to write trailer to output format: {}", ofmt->oformat->name);

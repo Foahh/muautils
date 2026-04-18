@@ -16,30 +16,25 @@ namespace {
 
 [[nodiscard]] uint32_t LegacyFourCc(const DXGI_FORMAT format) {
     switch (format) {
-        case DXGI_FORMAT_BC1_UNORM:
-            return PIXEL_FMT_FOURCC('D', 'X', 'T', '1');
-        case DXGI_FORMAT_BC3_UNORM:
-            return PIXEL_FMT_FOURCC('D', 'X', 'T', '5');
-        default:
-            throw std::runtime_error(fmt::format(
-                "Legacy DDS writer received unsupported DXGI format {}",
-                static_cast<int>(format)));
+    case DXGI_FORMAT_BC1_UNORM:
+        return PIXEL_FMT_FOURCC('D', 'X', 'T', '1');
+    case DXGI_FORMAT_BC3_UNORM:
+        return PIXEL_FMT_FOURCC('D', 'X', 'T', '5');
+    default:
+        throw std::runtime_error(
+            fmt::format("Legacy DDS writer received unsupported DXGI format {}", static_cast<int>(format)));
     }
 }
 
-[[nodiscard]] std::vector<uint8_t> EncodeToLegacyDds(std::span<const uint8_t> rgba,
-                                                    const unsigned width,
-                                                    const unsigned height,
-                                                    const DXGI_FORMAT format) {
+[[nodiscard]] std::vector<uint8_t> EncodeToLegacyDds(std::span<const uint8_t> rgba, const unsigned width,
+                                                     const unsigned height, const DXGI_FORMAT format) {
     const size_t expected = static_cast<size_t>(width) * height * 4;
     if (rgba.size() != expected) {
-        throw std::runtime_error(fmt::format(
-            "RGBA buffer size mismatch: got {} bytes, expected {} for {}x{}",
-            rgba.size(), expected, width, height));
+        throw std::runtime_error(fmt::format("RGBA buffer size mismatch: got {} bytes, expected {} for {}x{}",
+                                             rgba.size(), expected, width, height));
     }
 
-    static_assert(sizeof(utils::color_quad_u8) == 4,
-                  "utils::color_quad_u8 must be 4 bytes for memcpy staging");
+    static_assert(sizeof(utils::color_quad_u8) == 4, "utils::color_quad_u8 must be 4 bytes for memcpy staging");
     utils::image_u8 src;
     src.init(width, height);
     std::memcpy(src.get_pixels().data(), rgba.data(), expected);
@@ -55,9 +50,8 @@ namespace {
 
     rdo_bc::rdo_bc_encoder encoder;
     if (!encoder.init(src, params) || !encoder.encode()) {
-        throw std::runtime_error(fmt::format(
-            "bc7enc_rdo failed to encode {}x{} (format={})",
-            width, height, static_cast<int>(format)));
+        throw std::runtime_error(
+            fmt::format("bc7enc_rdo failed to encode {}x{} (format={})", width, height, static_cast<int>(format)));
     }
 
     DDSURFACEDESC2 desc{};
@@ -100,19 +94,15 @@ std::vector<uint8_t> ConvertEffect(const std::array<fs::path, 4> &srcPaths) {
     tiles.reserve(4);
     for (int i = 0; i < 4; ++i) {
         if (srcPaths[i].empty()) {
-            vips::VImage blank = vips::VImage::black(
-                tileSize, tileSize,
-                vips::VImage::option()->set("bands", 4));
+            vips::VImage blank = vips::VImage::black(tileSize, tileSize, vips::VImage::option()->set("bands", 4));
             blank = blank.cast(VIPS_FORMAT_UCHAR);
-            blank = blank.copy(
-                vips::VImage::option()->set("interpretation", VIPS_INTERPRETATION_sRGB));
+            blank = blank.copy(vips::VImage::option()->set("interpretation", VIPS_INTERPRETATION_sRGB));
             tiles.push_back(std::move(blank));
         } else {
             tiles.push_back(LoadShrunkRgba(srcPaths[i], tileSize, tileSize));
         }
     }
-    vips::VImage canvas = vips::VImage::arrayjoin(
-        tiles, vips::VImage::option()->set("across", 2));
+    vips::VImage canvas = vips::VImage::arrayjoin(tiles, vips::VImage::option()->set("across", 2));
     const unsigned w = canvas.width();
     const unsigned h = canvas.height();
     const auto pixels = RgbaPixelsFrom(canvas);
@@ -123,10 +113,11 @@ void SaveJacketDds(std::span<const uint8_t> rgba, const unsigned width, const un
                    const fs::path &dstPath) {
     const auto blob = EncodeToLegacyDds(rgba, width, height, DXGI_FORMAT_BC1_UNORM);
     std::ofstream out(dstPath, std::ios::binary);
-    if (!out) throw lib::FileError(dstPath, "Failed to create DDS file");
-    out.write(reinterpret_cast<const char *>(blob.data()),
-              static_cast<std::streamsize>(blob.size()));
-    if (!out) throw lib::FileError(dstPath, "Failed to write DDS file");
+    if (!out)
+        throw lib::FileError(dstPath, "Failed to create DDS file");
+    out.write(reinterpret_cast<const char *>(blob.data()), static_cast<std::streamsize>(blob.size()));
+    if (!out)
+        throw lib::FileError(dstPath, "Failed to write DDS file");
 }
 
 } // namespace Image::detail

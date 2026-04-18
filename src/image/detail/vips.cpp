@@ -6,7 +6,8 @@
 namespace Image::detail {
 
 void GFreeDeleter::operator()(void *p) const noexcept {
-    if (p) g_free(p);
+    if (p)
+        g_free(p);
 }
 
 vips::VImage ToRgbaUchar(vips::VImage img) {
@@ -24,13 +25,12 @@ vips::VImage ToRgbaUchar(vips::VImage img) {
 
 vips::VImage LoadShrunkRgba(const fs::path &path, const int w, const int h) {
     try {
-        vips::VImage img = vips::VImage::thumbnail(
-            lib::PathToUtf8(path).c_str(), w,
-            vips::VImage::option()
-                ->set("height", h)
-                ->set("size", VIPS_SIZE_FORCE)
-                ->set("no_rotate", true)
-                ->set("fail_on", VIPS_FAIL_ON_ERROR));
+        vips::VImage img = vips::VImage::thumbnail(lib::PathToUtf8(path).c_str(), w,
+                                                   vips::VImage::option()
+                                                       ->set("height", h)
+                                                       ->set("size", VIPS_SIZE_FORCE)
+                                                       ->set("no_rotate", true)
+                                                       ->set("fail_on", VIPS_FAIL_ON_ERROR));
         return ToRgbaUchar(std::move(img));
     } catch (const vips::VError &) {
         throw lib::FileError(path, "Failed to load image");

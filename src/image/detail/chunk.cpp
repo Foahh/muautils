@@ -12,9 +12,10 @@ namespace Image::detail {
 namespace {
 
 [[nodiscard]] std::vector<size_t> FindAllOccurrences(const std::span<const uint8_t> haystack,
-                                                    const std::span<const uint8_t> needle) {
+                                                     const std::span<const uint8_t> needle) {
     std::vector<size_t> out;
-    if (needle.empty() || haystack.size() < needle.size()) return out;
+    if (needle.empty() || haystack.size() < needle.size())
+        return out;
     const std::string_view hay(reinterpret_cast<const char *>(haystack.data()), haystack.size());
     const std::string_view ndl(reinterpret_cast<const char *>(needle.data()), needle.size());
     size_t pos = 0;
@@ -41,9 +42,8 @@ std::vector<uint8_t> ReadFileData(const fs::path &path) {
     return buffer;
 }
 
-std::optional<size_t> FindChunks(const std::span<const uint8_t> haystack,
-                                   const std::span<const uint8_t> needle,
-                                   const size_t start) {
+std::optional<size_t> FindChunks(const std::span<const uint8_t> haystack, const std::span<const uint8_t> needle,
+                                 const size_t start) {
     if (start >= haystack.size() || needle.empty() || haystack.size() - start < needle.size()) {
         return std::nullopt;
     }
@@ -57,8 +57,8 @@ std::optional<size_t> FindChunks(const std::span<const uint8_t> haystack,
 }
 
 std::vector<std::pair<size_t, size_t>> LocateChunks(const std::span<const uint8_t> data,
-                                                      const std::span<const uint8_t> header,
-                                                      const std::span<const uint8_t> footer) {
+                                                    const std::span<const uint8_t> header,
+                                                    const std::span<const uint8_t> footer) {
     const auto headers = FindAllOccurrences(data, header);
     const auto footers = FindAllOccurrences(data, footer);
 
@@ -85,7 +85,8 @@ std::vector<std::pair<size_t, size_t>> LocateChunks(const std::span<const uint8_
             end = nextHeader;
         }
         chunks.emplace_back(start, end);
-        if (!foundStop && !foundNextHeader) break;
+        if (!foundStop && !foundNextHeader)
+            break;
     }
     return chunks;
 }
@@ -96,9 +97,8 @@ std::vector<std::pair<size_t, size_t>> LocateDdsChunks(const std::span<const uin
     return LocateChunks(data, ddsHeader, ddsStopSign);
 }
 
-void ExtractChunks(const std::span<const uint8_t> data, const fs::path &dstFolder,
-                   const fs::path &baseName, const fs::path &extension,
-                   const std::vector<std::pair<size_t, size_t>> &chunks) {
+void ExtractChunks(const std::span<const uint8_t> data, const fs::path &dstFolder, const fs::path &baseName,
+                   const fs::path &extension, const std::vector<std::pair<size_t, size_t>> &chunks) {
     fs::create_directories(dstFolder);
     for (size_t i = 0; i < chunks.size(); ++i) {
         auto [start, end] = chunks[i];
@@ -110,10 +110,11 @@ void ExtractChunks(const std::span<const uint8_t> data, const fs::path &dstFolde
         path += fmt::format("_{:04d}", i + 1);
         path += extension;
         std::ofstream file(path, std::ios::binary);
-        if (!file) throw lib::FileError(path, "Failed to create file");
-        file.write(reinterpret_cast<const char *>(data.data() + start),
-                   static_cast<std::streamsize>(end - start));
-        if (!file) throw lib::FileError(path, "Failed to write file");
+        if (!file)
+            throw lib::FileError(path, "Failed to create file");
+        file.write(reinterpret_cast<const char *>(data.data() + start), static_cast<std::streamsize>(end - start));
+        if (!file)
+            throw lib::FileError(path, "Failed to write file");
     }
 }
 
@@ -127,7 +128,8 @@ void ReplaceChunks(const std::span<const uint8_t> data, const fs::path &dstPath,
 
     size_t outSize = data.size();
     for (size_t i = 0; i < chunks.size(); ++i) {
-        if (!replacements[i].has_value()) continue;
+        if (!replacements[i].has_value())
+            continue;
         const auto [s, e] = chunks[i];
         outSize = outSize + replacements[i]->size() - (e - s);
     }
@@ -153,10 +155,11 @@ void ReplaceChunks(const std::span<const uint8_t> data, const fs::path &dstPath,
     std::memcpy(dst, data.data() + cursor, data.size() - cursor);
 
     std::ofstream outFile(dstPath, std::ios::binary);
-    if (!outFile) throw lib::FileError(dstPath, "Failed to create file");
-    outFile.write(reinterpret_cast<const char *>(out.data()),
-                  static_cast<std::streamsize>(out.size()));
-    if (!outFile) throw lib::FileError(dstPath, "Failed to write file");
+    if (!outFile)
+        throw lib::FileError(dstPath, "Failed to create file");
+    outFile.write(reinterpret_cast<const char *>(out.data()), static_cast<std::streamsize>(out.size()));
+    if (!outFile)
+        throw lib::FileError(dstPath, "Failed to write file");
 }
 
 } // namespace Image::detail

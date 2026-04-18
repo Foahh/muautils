@@ -18,10 +18,15 @@ struct GFreeDeleter {
 class VipsPixelBuffer {
   public:
     VipsPixelBuffer() = default;
-    VipsPixelBuffer(uint8_t *data, size_t size) : m_data(data), m_size(size) {}
+    VipsPixelBuffer(uint8_t *data, size_t size) : m_data(data), m_size(size) {
+    }
 
-    [[nodiscard]] const uint8_t *data() const noexcept { return m_data.get(); }
-    [[nodiscard]] size_t size() const noexcept { return m_size; }
+    [[nodiscard]] const uint8_t *data() const noexcept {
+        return m_data.get();
+    }
+    [[nodiscard]] size_t size() const noexcept {
+        return m_size;
+    }
     [[nodiscard]] std::span<const uint8_t> span() const noexcept {
         return {m_data.get(), m_size};
     }

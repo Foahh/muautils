@@ -71,6 +71,7 @@ install(TARGETS mua_common
 install(TARGETS mua_audio mua_image
         EXPORT muautilsTargets
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        OBJECTS DESTINATION ${CMAKE_INSTALL_LIBDIR}/objects
         INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(EXPORT muautilsTargets
@@ -81,7 +82,8 @@ install(EXPORT muautilsTargets
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/src/"
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
         FILES_MATCHING
-        PATTERN "*.hpp")
+        PATTERN "*.hpp"
+        PATTERN "detail" EXCLUDE)
 
 configure_package_config_file(
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/muautilsConfig.cmake.in"

@@ -1,7 +1,6 @@
 #include "common.hpp"
 
 #include "audio/audio.hpp"
-#include "audio/convert.hpp"
 #include "audio/detail/analyze.hpp"
 #include "audio/detail/target_format.hpp"
 

@@ -1,7 +1,6 @@
 #include "cli/cli.hpp"
 
 #include "audio/audio.hpp"
-#include "audio/convert.hpp"
 #include "image/image.hpp"
 #include "lib.hpp"
 

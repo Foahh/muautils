@@ -1,6 +1,7 @@
 @PACKAGE_INIT@
 
 include(CMakeFindDependencyMacro)
+find_dependency(OpenMP REQUIRED)
 find_dependency(spdlog CONFIG)
 find_dependency(fmt CONFIG)
 find_package(FFMPEG REQUIRED)

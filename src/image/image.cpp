@@ -2,6 +2,7 @@
 #include "image.hpp"
 
 #include <fmt/format.h>
+#include <future>
 #include <vips/vips8>
 
 #include "detail/chunk.hpp"
@@ -18,7 +19,7 @@ void Image::Initialize() {
 
 void Image::EnsureValid(const fs::path &srcPath) {
     try {
-        vips::VImage::new_from_file(PathToVipsUtf8(srcPath).c_str(),
+        vips::VImage::new_from_file(lib::PathToUtf8(srcPath).c_str(),
                                     vips::VImage::option()->set("fail_on", VIPS_FAIL_ON_WARNING));
     } catch (const vips::VError &e) {
         throw lib::FileError(srcPath, fmt::format("Invalid image: {}", e.what()));
@@ -26,20 +27,27 @@ void Image::EnsureValid(const fs::path &srcPath) {
 }
 
 void Image::ConvertJacket(const fs::path &srcPath, const fs::path &dstPath) {
-    vips::VImage img = ToRgbaUchar(LoadVipsImage(srcPath));
-    img = LanczosResizeTo(std::move(img), 300, 300);
+    vips::VImage img = LoadShrunkRgba(srcPath, 300, 300);
     const unsigned w = img.width();
     const unsigned h = img.height();
-    auto rgba = RgbaPixelsFrom(img);
-    SaveJacketDds(std::move(rgba), w, h, dstPath);
+    const auto pixels = RgbaPixelsFrom(img);
+    SaveJacketDds(pixels.span(), w, h, dstPath);
 }
 
 void Image::ConvertStage(const fs::path &bgSrcPath, const fs::path &stSrcPath,
                           const fs::path &stDstPath,
                           const std::array<fs::path, 4> &fxSrcPaths) {
-    const auto stAfb = ReadFileData(stSrcPath);
-    const auto bgDds = ConvertBackground(bgSrcPath);
-    const auto fxDds = ConvertEffect(fxSrcPaths);
+
+    auto stFut = std::async(std::launch::async,
+                            [&] { return ReadFileData(stSrcPath); });
+    auto bgFut = std::async(std::launch::async,
+                            [&] { return ConvertBackground(bgSrcPath); });
+    auto fxFut = std::async(std::launch::async,
+                            [&] { return ConvertEffect(fxSrcPaths); });
+
+    const auto stAfb = stFut.get();
+    const auto bgDds = bgFut.get();
+    const auto fxDds = fxFut.get();
 
     const auto stChunks = LocateDdsChunks(stAfb);
     ReplaceChunks(stAfb, stDstPath, stChunks,

@@ -23,8 +23,6 @@ target_compile_definitions(bc7enc PUBLIC SUPPORT_BC7E=0)
 if (MSVC)
     target_compile_options(bc7enc PRIVATE /w /FI"cstdint")
 else ()
-    # bc7enc_rdo relies on <cstdint> being transitively included; newer
-    # libstdc++ (GCC >= 13) no longer does this, so force-include it.
     target_compile_options(bc7enc PRIVATE
             -fno-strict-aliasing
             -w
@@ -33,9 +31,7 @@ endif ()
 
 set_target_properties(bc7enc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-find_package(OpenMP)
-if (OpenMP_CXX_FOUND)
-    target_link_libraries(bc7enc PUBLIC OpenMP::OpenMP_CXX)
-endif ()
+find_package(OpenMP REQUIRED)
+target_link_libraries(bc7enc PUBLIC OpenMP::OpenMP_CXX)
 
 unset(_bc7enc_root)

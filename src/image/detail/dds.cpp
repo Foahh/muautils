@@ -3,6 +3,7 @@
 
 #include "vips.hpp"
 
+#include <algorithm>
 #include <cstring>
 #include <fmt/format.h>
 #include <fstream>
@@ -26,10 +27,10 @@ namespace {
     }
 }
 
-[[nodiscard]] std::vector<uint8_t> EncodeToLegacyDds(std::vector<uint8_t> rgba,
-                                                       const unsigned width,
-                                                       const unsigned height,
-                                                       const DXGI_FORMAT format) {
+[[nodiscard]] std::vector<uint8_t> EncodeToLegacyDds(std::span<const uint8_t> rgba,
+                                                    const unsigned width,
+                                                    const unsigned height,
+                                                    const DXGI_FORMAT format) {
     const size_t expected = static_cast<size_t>(width) * height * 4;
     if (rgba.size() != expected) {
         throw std::runtime_error(fmt::format(
@@ -68,50 +69,59 @@ namespace {
     desc.ddpfPixelFormat.dwSize = sizeof(desc.ddpfPixelFormat);
     desc.ddpfPixelFormat.dwFlags = DDPF_FOURCC;
     desc.ddpfPixelFormat.dwFourCC = LegacyFourCc(encoder.get_pixel_format());
-    desc.lPitch = static_cast<int32_t>(
-        (((desc.dwWidth + 3u) & ~3u) * ((desc.dwHeight + 3u) & ~3u)
-         * encoder.get_pixel_format_bpp()) >> 3);
+    const uint32_t blocksWide = std::max(1u, (desc.dwWidth + 3u) / 4u);
+    const uint32_t blocksTall = std::max(1u, (desc.dwHeight + 3u) / 4u);
+    const uint32_t bytesPerBlock = encoder.get_pixel_format_bpp() * 2u;
+    desc.lPitch = static_cast<int32_t>(blocksWide * blocksTall * bytesPerBlock);
 
     constexpr size_t headerBytes = 4 + sizeof(DDSURFACEDESC2);
-    const size_t blockBytes = encoder.get_total_blocks_size_in_bytes();
-    std::vector<uint8_t> out(headerBytes + blockBytes);
+    const size_t compressedBytes = encoder.get_total_blocks_size_in_bytes();
+    std::vector<uint8_t> out(headerBytes + compressedBytes);
     std::memcpy(out.data(), "DDS ", 4);
     std::memcpy(out.data() + 4, &desc, sizeof(desc));
-    std::memcpy(out.data() + headerBytes, encoder.get_blocks(), blockBytes);
+    std::memcpy(out.data() + headerBytes, encoder.get_blocks(), compressedBytes);
     return out;
 }
 
 } // namespace
 
 std::vector<uint8_t> ConvertBackground(const fs::path &srcPath) {
-    vips::VImage img = ToRgbaUchar(LoadVipsImage(srcPath));
-    img = LanczosResizeTo(std::move(img), 1920, 1080);
+    vips::VImage img = LoadShrunkRgba(srcPath, 1920, 1080);
     const unsigned w = img.width();
     const unsigned h = img.height();
-    return EncodeToLegacyDds(RgbaPixelsFrom(img), w, h, DXGI_FORMAT_BC1_UNORM);
+    const auto pixels = RgbaPixelsFrom(img);
+    return EncodeToLegacyDds(pixels.span(), w, h, DXGI_FORMAT_BC1_UNORM);
 }
 
 std::vector<uint8_t> ConvertEffect(const std::array<fs::path, 4> &srcPaths) {
     constexpr int tileSize = 256;
-    constexpr int canvasSize = tileSize * 2;
-    vips::VImage canvas = vips::VImage::black(canvasSize, canvasSize,
-                                               vips::VImage::option()->set("bands", 4));
-    canvas = canvas.cast(VIPS_FORMAT_UCHAR);
-    canvas = canvas.copy(vips::VImage::option()->set("interpretation", VIPS_INTERPRETATION_sRGB));
+
+    std::vector<vips::VImage> tiles;
+    tiles.reserve(4);
     for (int i = 0; i < 4; ++i) {
-        if (srcPaths[i].empty()) continue;
-        vips::VImage tile = ToRgbaUchar(LoadVipsImage(srcPaths[i]));
-        tile = LanczosResizeTo(std::move(tile), tileSize, tileSize);
-        canvas = canvas.insert(tile, (i % 2) * tileSize, (i / 2) * tileSize);
+        if (srcPaths[i].empty()) {
+            vips::VImage blank = vips::VImage::black(
+                tileSize, tileSize,
+                vips::VImage::option()->set("bands", 4));
+            blank = blank.cast(VIPS_FORMAT_UCHAR);
+            blank = blank.copy(
+                vips::VImage::option()->set("interpretation", VIPS_INTERPRETATION_sRGB));
+            tiles.push_back(std::move(blank));
+        } else {
+            tiles.push_back(LoadShrunkRgba(srcPaths[i], tileSize, tileSize));
+        }
     }
+    vips::VImage canvas = vips::VImage::arrayjoin(
+        tiles, vips::VImage::option()->set("across", 2));
     const unsigned w = canvas.width();
     const unsigned h = canvas.height();
-    return EncodeToLegacyDds(RgbaPixelsFrom(canvas), w, h, DXGI_FORMAT_BC3_UNORM);
+    const auto pixels = RgbaPixelsFrom(canvas);
+    return EncodeToLegacyDds(pixels.span(), w, h, DXGI_FORMAT_BC3_UNORM);
 }
 
-void SaveJacketDds(std::vector<uint8_t> rgba, const unsigned width, const unsigned height,
+void SaveJacketDds(std::span<const uint8_t> rgba, const unsigned width, const unsigned height,
                    const fs::path &dstPath) {
-    const auto blob = EncodeToLegacyDds(std::move(rgba), width, height, DXGI_FORMAT_BC1_UNORM);
+    const auto blob = EncodeToLegacyDds(rgba, width, height, DXGI_FORMAT_BC1_UNORM);
     std::ofstream out(dstPath, std::ios::binary);
     if (!out) throw lib::FileError(dstPath, "Failed to create DDS file");
     out.write(reinterpret_cast<const char *>(blob.data()),

@@ -48,7 +48,6 @@ VImage LoadVipsImage(const fs::path &path) {
     }
 }
 
-// Loaders keep source bands/format/interpretation; DXT input must be 8-bit sRGB RGBA.
 VImage ToRgbaUchar(VImage img) {
     img = img.colourspace(VIPS_INTERPRETATION_sRGB);
 

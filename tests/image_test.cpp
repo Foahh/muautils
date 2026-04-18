@@ -44,14 +44,14 @@ TEST_CASE("ConvertJacket") {
 }
 
 TEST_CASE("ConvertStage") {
-    const auto nfDstPath = GetOutputPath(L"converted_nf.afb");
+    const auto stSrcPath = GetInputPath(L"st_dummy.afb");
     SECTION("All") {
         const auto bgSrcPath = GetInputPath(L"bg.png");
         const std::array fxSrcPaths = {GetInputPath(L"1.jpg"), GetInputPath(L"2.jpg"), GetInputPath(L"3.jpg"),
                                        GetInputPath(L"4.jpg")};
         const auto stDstPath = GetOutputPath(L"converted_stage.afb");
 
-        REQUIRE_NOTHROW(ConvertStage(bgSrcPath, nfDstPath, stDstPath, fxSrcPaths));
+        REQUIRE_NOTHROW(ConvertStage(bgSrcPath, stSrcPath, stDstPath, fxSrcPaths));
         REQUIRE(std::filesystem::exists(stDstPath));
     }
 
@@ -61,14 +61,14 @@ TEST_CASE("ConvertStage") {
             GetInputPath(L"1.jpg"), {}, GetInputPath(L"3.jpg"), {}};
         const auto stDstPath = GetOutputPath(L"converted_stage_with_missing_effects.afb");
 
-        REQUIRE_NOTHROW(ConvertStage(bgSrcPath, nfDstPath, stDstPath, fxSrcPaths));
+        REQUIRE_NOTHROW(ConvertStage(bgSrcPath, stSrcPath, stDstPath, fxSrcPaths));
 
         REQUIRE(std::filesystem::exists(stDstPath));
     }
 }
 
 TEST_CASE("ExtractDdsFromAfb") {
-    const auto srcPath = GetInputPath(L"1.afb");
+    const auto srcPath = GetInputPath(L"st_dummy.afb");
     const auto dstFolder = GetOutputPath(L"extracted_dds");
 
     std::filesystem::create_directories(dstFolder);

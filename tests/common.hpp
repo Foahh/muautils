@@ -38,4 +38,7 @@ inline void Setup() {
     if (const fs::path tmp = GetInputPath(); !std::filesystem::exists(tmp)) {
         std::filesystem::create_directories(tmp);
     }
+    if (const fs::path out = GetOutputPath(); !std::filesystem::exists(out)) {
+        std::filesystem::create_directories(out);
+    }
 }

@@ -41,7 +41,7 @@ void Assert(const HRESULT hr, const fs::path &path, fmt::format_string<Args...> 
 
 VImage LoadVipsImage(const fs::path &path) {
     try {
-        return VImage::new_from_file(path.u8string().c_str(),
+        return VImage::new_from_file(PathToVipsUtf8(path).c_str(),
                                      VImage::option()->set("access", VIPS_ACCESS_SEQUENTIAL)->set(
                                          "fail_on", VIPS_FAIL_ON_ERROR));
     } catch (const VError &) {

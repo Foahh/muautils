@@ -7,9 +7,15 @@
 #include <fmt/format.h>
 #include <fstream>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace Image {
+
+inline std::string PathToVipsUtf8(const fs::path &path) {
+    const std::u8string u8 = path.u8string();
+    return {reinterpret_cast<const char *>(u8.data()), u8.size()};
+}
 
 inline std::optional<size_t> FindChunks(const std::span<const uint8_t> haystack, const std::span<const uint8_t> needle,
                                         const size_t start) {

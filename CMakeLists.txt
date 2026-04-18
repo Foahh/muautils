@@ -34,7 +34,6 @@ add_library(mua_image STATIC
         src/image/detail/chunk.cpp
         src/image/detail/vips.cpp
         src/image/detail/dds.cpp
-        src/image/convert.cpp
         src/image/image.cpp)
 target_link_libraries(mua_image PUBLIC mua_common)
 target_link_libraries(mua_image PRIVATE Microsoft::DirectXTex PkgConfig::VIPS_CPP)

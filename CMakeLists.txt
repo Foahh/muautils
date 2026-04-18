@@ -31,6 +31,7 @@ find_package(directxtex CONFIG REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(VIPS_CPP REQUIRED IMPORTED_TARGET vips-cpp)
 add_library(mua_image STATIC
+        src/image/detail/chunk.cpp
         src/image/convert.cpp
         src/image/image.cpp)
 target_link_libraries(mua_image PUBLIC mua_common)

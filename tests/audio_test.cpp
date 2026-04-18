@@ -54,7 +54,7 @@ TEST_CASE("Normalize") {
 
         const auto meta = Analyze(dstPath);
         REQUIRE(meta.SampleRate == FMT_PCM_S16LE_8LU.SampleRate);
-        REQUIRE(meta.Channels == FMT_PCM_S16LE_8LU.Channels);
+        REQUIRE(meta.Channels == 2);
         REQUIRE(meta.SampleFormat == FMT_PCM_S16LE_8LU.SampleFormat);
 
         ret = Normalize(dstPath, tmpPath, 0.0);

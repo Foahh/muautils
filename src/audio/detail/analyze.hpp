@@ -6,6 +6,7 @@ extern "C" {
 #include <libavutil/samplefmt.h>
 }
 
+#include "audio/detail/raii.hpp"
 #include "lib.hpp"
 
 namespace Audio::detail {
@@ -22,5 +23,8 @@ struct AudioStreamMeta {
 };
 
 AudioStreamMeta Analyze(const fs::path &path);
+
+AudioStreamMeta Analyze(const AVFormatInputContextPtr &ifmt, const AVStream *ist,
+                        const AVCodecContextPtr &dctx);
 
 } // namespace Audio::detail

@@ -28,12 +28,10 @@ void RunGraph(const AVFormatInputContextPtr &input,
               AVFilterContext *sink,
               const OnFrame &onFrame);
 
-// Sends `frame` to `encoder`, drains output packets, rescales PTS from `srcStream`
-// to `encoder` time base, and writes packets to `output`.
 void Encode(const AVFramePtr &frame,
             const AVCodecContextPtr &encoder,
             const AVFormatOutputContextPtr &output,
             const AVPacketPtr &pkt,
-            const AVStream *srcStream);
+            AVRational src_frame_time_base);
 
 } // namespace Audio::detail

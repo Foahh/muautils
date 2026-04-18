@@ -8,6 +8,15 @@
 namespace fs = std::filesystem;
 
 namespace lib {
+
+[[nodiscard]] inline std::string PathToUtf8(const fs::path &path) {
+    const auto u8 = path.u8string();
+    if (u8.empty()) {
+        return {};
+    }
+    return std::string(reinterpret_cast<const char *>(u8.data()), u8.size());
+}
+
 class FileError final : public std::exception {
   public:
     FileError(const fs::path &path, const std::string &message) {

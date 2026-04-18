@@ -4,9 +4,12 @@ extern "C" {
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
 #include <libavformat/avformat.h>
+#include <libavutil/error.h>
 #include <libavutil/log.h>
 #include <libavutil/samplefmt.h>
 }
+
+#include <cstdint>
 
 #include "audio.hpp"
 #include "lib.hpp"
@@ -129,14 +132,17 @@ AVFilterContext *buildChain(const Audio::detail::AVFilterGraphPtr &graph,
 bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double offset) {
     using namespace Audio::detail;
 
-    const auto meta = Analyze(src);
-
     const auto ifmt = OpenAVFormatInput(src);
     const auto ist = GetBestAudioStream(ifmt);
     const auto dctx = OpenDecoder(ist);
+    const auto meta = Analyze(ifmt, ist, dctx);
 
     const auto plan = planNormalize(meta, dctx->codec_id, offset);
     if (plan.isNoop()) return false;
+
+    auto ret = avformat_seek_file(ifmt.get(), ist->index, INT64_MIN, 0, INT64_MAX, 0);
+    av::Check(ret, src, "Failed to seek input to start after loudness analysis");
+    avcodec_flush_buffers(dctx.get());
 
     const auto ofmt = OpenAVFormatOutput(dst);
     const AVCodecContextPtr ectx = OpenEncoder(DefaultTarget);
@@ -147,7 +153,7 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
 
     AVFilterContext *fsnk = buildChain(graph, dctx, plan, offset);
 
-    auto ret = avfilter_graph_config(graph.get(), nullptr);
+    ret = avfilter_graph_config(graph.get(), nullptr);
     av::Check(ret, "Failed to configure filter graph.");
 
     AVFilterContext *fsrc = nullptr;
@@ -167,13 +173,31 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
                  AVFramePtr owned(av_frame_alloc());
                  av::Require(owned.get(), "Failed to allocate frame");
                  av_frame_move_ref(owned.get(), f);
-                 Encode(owned, ectx, ofmt, pkt, ist);
+                 Encode(owned, ectx, ofmt, pkt, dctx->time_base);
              });
 
-    ret = avcodec_send_frame(ectx.get(), nullptr);
-    av::Check(ret, "Failed to send end-of-stream frame to encoder: {}", ectx->codec->name);
+    for (;;) {
+        ret = avcodec_send_frame(ectx.get(), nullptr);
+        if (ret != AVERROR(EAGAIN)) {
+            av::Check(ret, "Failed to send end-of-stream frame to encoder: {}", ectx->codec->name);
+            break;
+        }
+        while (avcodec_receive_packet(ectx.get(), pkt.get()) == 0) {
+            ret = av_interleaved_write_frame(ofmt.get(), pkt.get());
+            av::Check(ret, "Failed to write packet to output format: {}", ofmt->oformat->name);
+            av_packet_unref(pkt.get());
+        }
+    }
 
-    while (avcodec_receive_packet(ectx.get(), pkt.get()) == 0) {
+    for (;;) {
+        ret = avcodec_receive_packet(ectx.get(), pkt.get());
+        if (ret == AVERROR_EOF) {
+            break;
+        }
+        if (ret == AVERROR(EAGAIN)) {
+            continue;
+        }
+        av::Check(ret, "Failed to receive packet while flushing encoder: {}", ectx->codec->name);
         ret = av_interleaved_write_frame(ofmt.get(), pkt.get());
         av::Check(ret, "Failed to write packet to output format: {}", ofmt->oformat->name);
         av_packet_unref(pkt.get());

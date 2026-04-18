@@ -20,7 +20,11 @@ AudioStreamMeta Analyze(const fs::path &path) {
     const auto ifmt = OpenAVFormatInput(path);
     const auto ist = GetBestAudioStream(ifmt);
     const auto dctx = OpenDecoder(ist);
+    return Analyze(ifmt, ist, dctx);
+}
 
+AudioStreamMeta Analyze(const AVFormatInputContextPtr &ifmt, const AVStream *ist,
+                        const AVCodecContextPtr &dctx) {
     AudioStreamMeta meta{};
     meta.StreamIndex = ist->index;
     meta.MediaType = dctx->codec_type;

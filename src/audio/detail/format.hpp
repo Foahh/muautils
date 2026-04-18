@@ -9,11 +9,7 @@ extern "C" {
 #include "audio/detail/target_format.hpp"
 #include "lib.hpp"
 
-#include <string>
-
 namespace Audio::detail {
-
-std::string PathToUtf8(const fs::path &path);
 
 AVFormatInputContextPtr OpenAVFormatInput(const fs::path &path);
 AVFormatOutputContextPtr OpenAVFormatOutput(const fs::path &path);

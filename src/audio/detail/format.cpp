@@ -8,18 +8,9 @@ extern "C" {
 
 namespace Audio::detail {
 
-std::string PathToUtf8(const fs::path &path) {
-#ifdef _WIN32
-    auto s = path.u8string();
-    return {s.begin(), s.end()};
-#else
-    return path.string();
-#endif
-}
-
 AVFormatInputContextPtr OpenAVFormatInput(const fs::path &path) {
     AVFormatContext *raw = nullptr;
-    auto ret = avformat_open_input(&raw, PathToUtf8(path).c_str(), nullptr, nullptr);
+    auto ret = avformat_open_input(&raw, lib::PathToUtf8(path).c_str(), nullptr, nullptr);
     av::Check(ret, path, "Failed to open input format context");
     auto ctx = AVFormatInputContextPtr(raw);
     ret = avformat_find_stream_info(ctx.get(), nullptr);
@@ -29,7 +20,7 @@ AVFormatInputContextPtr OpenAVFormatInput(const fs::path &path) {
 
 AVFormatOutputContextPtr OpenAVFormatOutput(const fs::path &path) {
     AVFormatContext *raw = nullptr;
-    const auto ret = avformat_alloc_output_context2(&raw, nullptr, "wav", PathToUtf8(path).c_str());
+    const auto ret = avformat_alloc_output_context2(&raw, nullptr, "wav", lib::PathToUtf8(path).c_str());
     av::Check(ret, path, "Failed to allocate output format context");
     return AVFormatOutputContextPtr(raw);
 }
@@ -91,7 +82,7 @@ AVStream *OpenOutputStream(const fs::path &path,
     av::Check(ret, "Failed to copy codec parameters to output stream");
 
     if (!(ofmt->oformat->flags & AVFMT_NOFILE)) {
-        ret = avio_open(&ofmt->pb, PathToUtf8(path).c_str(), AVIO_FLAG_WRITE);
+        ret = avio_open(&ofmt->pb, lib::PathToUtf8(path).c_str(), AVIO_FLAG_WRITE);
         av::Check(ret, path, "Failed to open output I/O");
     }
 

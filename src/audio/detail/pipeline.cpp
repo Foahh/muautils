@@ -4,6 +4,7 @@
 extern "C" {
 #include <libavfilter/buffersink.h>
 #include <libavfilter/buffersrc.h>
+#include <libavutil/error.h>
 }
 
 #include "audio/detail/error.hpp"
@@ -75,16 +76,26 @@ void Encode(const AVFramePtr &frame,
             const AVCodecContextPtr &encoder,
             const AVFormatOutputContextPtr &output,
             const AVPacketPtr &pkt,
-            const AVStream *srcStream) {
-    if (frame->pts != AV_NOPTS_VALUE) {
-        frame->pts = av_rescale_q(frame->pts, srcStream->time_base, encoder->time_base);
+            const AVRational src_frame_time_base) {
+    if (frame->pts != AV_NOPTS_VALUE && src_frame_time_base.num > 0 && src_frame_time_base.den > 0) {
+        frame->pts = av_rescale_q(frame->pts, src_frame_time_base, encoder->time_base);
     }
 
-    auto ret = avcodec_send_frame(encoder.get(), frame.get());
-    av::Check(ret, "Failed to send frame to encoder: {}", encoder->codec->name);
+    for (;;) {
+        auto ret = avcodec_send_frame(encoder.get(), frame.get());
+        if (ret != AVERROR(EAGAIN)) {
+            av::Check(ret, "Failed to send frame to encoder: {}", encoder->codec->name);
+            break;
+        }
+        while (avcodec_receive_packet(encoder.get(), pkt.get()) == 0) {
+            ret = av_interleaved_write_frame(output.get(), pkt.get());
+            av::Check(ret, "Failed to write packet to output format: {}", output->oformat->name);
+            av_packet_unref(pkt.get());
+        }
+    }
 
     while (avcodec_receive_packet(encoder.get(), pkt.get()) == 0) {
-        ret = av_interleaved_write_frame(output.get(), pkt.get());
+        auto ret = av_interleaved_write_frame(output.get(), pkt.get());
         av::Check(ret, "Failed to write packet to output format: {}", output->oformat->name);
         av_packet_unref(pkt.get());
     }

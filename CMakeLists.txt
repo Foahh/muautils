@@ -33,7 +33,7 @@ add_library(mua_image STATIC
 target_link_libraries(mua_image PUBLIC mua_common)
 target_link_libraries(mua_image PRIVATE Microsoft::DirectXTex PkgConfig::VIPS_CPP)
 
-add_executable(mua src/main.cpp)
+add_executable(mua src/main.cpp src/cli/cli.cpp)
 find_package(CLI11 CONFIG REQUIRED)
 target_link_libraries(mua PRIVATE mua_audio mua_image CLI11::CLI11)
 

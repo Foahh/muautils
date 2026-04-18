@@ -28,8 +28,9 @@ target_link_libraries(audio_lib INTERFACE ${FFMPEG_LIBRARIES} common_lib)
 add_library(image_lib INTERFACE)
 target_sources(image_lib PUBLIC src/image/convert.cpp src/image/image.cpp)
 find_package(directxtex CONFIG REQUIRED)
-find_package(freeimage CONFIG REQUIRED)
-target_link_libraries(image_lib INTERFACE common_lib Microsoft::DirectXTex freeimage::FreeImage freeimage::FreeImagePlus)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(VIPS_CPP REQUIRED IMPORTED_TARGET vips-cpp)
+target_link_libraries(image_lib INTERFACE common_lib Microsoft::DirectXTex PkgConfig::vips-cpp)
 
 # Main Executables
 add_executable(mua src/main.cpp

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "lib.hpp"
-#include "utils.hpp"
 
 #include <filesystem>
 #include <span>
@@ -9,8 +8,6 @@
 #include <fstream>
 #include <optional>
 #include <vector>
-
-#include <FreeImagePlus.h>
 
 namespace Image {
 
@@ -147,42 +144,6 @@ inline std::vector<std::pair<size_t, size_t> > LocateDdsChunks(const std::span<c
     constexpr uint8_t ddsHeader[] = {'D', 'D', 'S', ' '};
     constexpr uint8_t ddsStopSign[] = {'P', 'O', 'F', '0'};
     return LocateChunks(data, ddsHeader, ddsStopSign);
-}
-
-inline FREE_IMAGE_FORMAT GetFreeImageFormat(const fs::path &path) {
-#ifdef _WIN32
-    const auto fif = FreeImage_GetFileTypeU(path.c_str());
-    return fif != FIF_UNKNOWN ? fif : FreeImage_GetFIFFromFilenameU(path.c_str());
-#else
-    const auto fif = FreeImage_GetFileType(path.c_str());
-    return fif != FIF_UNKNOWN ? fif : FreeImage_GetFIFFromFilename(path.c_str());
-#endif
-}
-
-inline bool LoadFipImage(fipImage &img, const fs::path &path) {
-#ifdef _WIN32
-    return img.loadU(path.c_str());
-#else
-    return img.load(path.c_str());
-#endif
-}
-
-inline fipImage LoadFip32Image(const fs::path &srcPath) {
-    fipImage img;
-    if (!LoadFipImage(img, srcPath)) {
-        throw lib::FileError(srcPath, "Failed to load image");
-    }
-    if (img.getImageType() != FIT_BITMAP || img.getBitsPerPixel() != 32) {
-        if (!img.convertTo32Bits()) {
-            throw lib::FileError(srcPath, "Failed to convert image to 32bpp");
-        }
-    }
-    return img;
-}
-
-inline bool IsImageValid(const fs::path &srcPath) {
-    const auto fif = GetFreeImageFormat(srcPath);
-    return fif != FIF_UNKNOWN && FreeImage_FIFSupportsReading(fif);
 }
 
 } // namespace Image

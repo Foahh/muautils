@@ -2,7 +2,8 @@
 #include "lib.hpp"
 #include "utils.hpp"
 
-#include <spdlog/spdlog.h>
+#include <fmt/format.h>
+#include <vips/vips8>
 
 void Image::ExtractDds(const fs::path &srcPath, const fs::path &dstFolder) {
     std::vector<uint8_t> data = ReadFileData(srcPath);
@@ -19,16 +20,17 @@ void Image::ExtractDds(const fs::path &srcPath, const fs::path &dstFolder) {
     ExtractChunks(data, dstFolder, baseName, ".dds", chunks);
 }
 
-
 void Image::Initialize() {
-    FreeImage_Initialise();
-    FreeImage_SetOutputMessage([](FREE_IMAGE_FORMAT, const char *msg) {
-        spdlog::error(msg);
-    });
+    if (vips_init("mua") != 0) {
+        throw std::runtime_error("Failed to initialize libvips");
+    }
 }
 
 void Image::EnsureValid(const fs::path &srcPath) {
-    if (!IsImageValid(srcPath)) {
-        throw lib::FileError(srcPath, "Invalid image format or unsupported file type");
+    try {
+        vips::VImage::new_from_file(srcPath.u8string().c_str(),
+                                    vips::VImage::option()->set("fail_on", VIPS_FAIL_ON_WARNING));
+    } catch (const vips::VError &e) {
+        throw lib::FileError(srcPath, fmt::format("Invalid image: {}", e.what()));
     }
 }

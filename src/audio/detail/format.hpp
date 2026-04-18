@@ -19,8 +19,6 @@ AVStream *GetBestAudioStream(const AVFormatInputContextPtr &ctx);
 AVCodecContextPtr OpenDecoder(const AVStream *st);
 AVCodecContextPtr OpenEncoder(const TargetFormat &params);
 
-AVStream *OpenOutputStream(const fs::path &path,
-                           const AVFormatOutputContextPtr &ofmt,
-                           const AVCodecContextPtr &ectx);
+AVStream *OpenOutputStream(const fs::path &path, const AVFormatOutputContextPtr &ofmt, const AVCodecContextPtr &ectx);
 
 } // namespace Audio::detail

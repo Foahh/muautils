@@ -15,8 +15,8 @@ AVFilterContext *Filter(const AVFilterGraphPtr &graph, const char *name, const c
     return ctx;
 }
 
-AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from,
-                        const char *name, const char *instance, const char *opts) {
+AVFilterContext *Filter(const AVFilterGraphPtr &graph, AVFilterContext *from, const char *name, const char *instance,
+                        const char *opts) {
     AVFilterContext *ctx = Filter(graph, name, instance);
 
     auto ret = avfilter_init_str(ctx, opts);

@@ -20,15 +20,12 @@ namespace Audio::detail {
 namespace pipeline_detail {
 
 template <typename FrameCb>
-void pumpDecoder(const AVCodecContextPtr &decoder,
-                 AVFilterContext *src,
-                 AVFilterContext *sink,
-                 const AVFramePtr &dfrm,
-                 const AVFramePtr &ffrm,
-                 FrameCb &&cb) {
+void pumpDecoder(const AVCodecContextPtr &decoder, AVFilterContext *src, AVFilterContext *sink, const AVFramePtr &dfrm,
+                 const AVFramePtr &ffrm, FrameCb &&cb) {
     for (;;) {
         auto ret = avcodec_receive_frame(decoder.get(), dfrm.get());
-        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) break;
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+            break;
         av::Check(ret, "Failed to receive frame from decoder");
 
         ret = av_buffersrc_add_frame(src, dfrm.get());
@@ -49,12 +46,8 @@ void pumpDecoder(const AVCodecContextPtr &decoder,
 // decoder flush and filter-graph flush. Caller is responsible for any encoder flush
 // and trailer write that comes after.
 template <typename OnFrame>
-void RunGraph(const AVFormatInputContextPtr &input,
-              const AVStream *stream,
-              const AVCodecContextPtr &decoder,
-              AVFilterContext *src,
-              AVFilterContext *sink,
-              OnFrame &&onFrame) {
+void RunGraph(const AVFormatInputContextPtr &input, const AVStream *stream, const AVCodecContextPtr &decoder,
+              AVFilterContext *src, AVFilterContext *sink, OnFrame &&onFrame) {
     auto &&cb = std::forward<OnFrame>(onFrame);
 
     const AVPacketPtr pkt(av_packet_alloc());
@@ -86,10 +79,7 @@ void RunGraph(const AVFormatInputContextPtr &input,
     }
 }
 
-void Encode(const AVFramePtr &frame,
-            const AVCodecContextPtr &encoder,
-            const AVFormatOutputContextPtr &output,
-            const AVPacketPtr &pkt,
-            AVRational src_frame_time_base);
+void Encode(const AVFramePtr &frame, const AVCodecContextPtr &encoder, const AVFormatOutputContextPtr &output,
+            const AVPacketPtr &pkt, AVRational src_frame_time_base);
 
 } // namespace Audio::detail

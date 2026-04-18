@@ -47,7 +47,8 @@ AVCodecContextPtr OpenDecoder(const AVStream *st) {
 
     if (ctx->ch_layout.order == AV_CHANNEL_ORDER_UNSPEC || ctx->ch_layout.nb_channels == 0) {
         int ch = ctx->ch_layout.nb_channels;
-        if (ch == 0) ch = st->codecpar->ch_layout.nb_channels;
+        if (ch == 0)
+            ch = st->codecpar->ch_layout.nb_channels;
         av::Require(ch > 0, "No audio channels available in stream");
         av_channel_layout_uninit(&ctx->ch_layout);
         av_channel_layout_default(&ctx->ch_layout, ch);
@@ -71,9 +72,7 @@ AVCodecContextPtr OpenEncoder(const TargetFormat &params) {
     return ectx;
 }
 
-AVStream *OpenOutputStream(const fs::path &path,
-                           const AVFormatOutputContextPtr &ofmt,
-                           const AVCodecContextPtr &ectx) {
+AVStream *OpenOutputStream(const fs::path &path, const AVFormatOutputContextPtr &ofmt, const AVCodecContextPtr &ectx) {
     AVStream *ost = avformat_new_stream(ofmt.get(), nullptr);
     av::Require(ost, "Failed to create output stream");
     ost->time_base = ectx->time_base;

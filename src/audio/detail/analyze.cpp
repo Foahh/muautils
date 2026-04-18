@@ -23,8 +23,7 @@ AudioStreamMeta Analyze(const fs::path &path) {
     return Analyze(ifmt, ist, dctx);
 }
 
-AudioStreamMeta Analyze(const AVFormatInputContextPtr &ifmt, const AVStream *ist,
-                        const AVCodecContextPtr &dctx) {
+AudioStreamMeta Analyze(const AVFormatInputContextPtr &ifmt, const AVStream *ist, const AVCodecContextPtr &dctx) {
     AudioStreamMeta meta{};
     meta.StreamIndex = ist->index;
     meta.MediaType = dctx->codec_type;

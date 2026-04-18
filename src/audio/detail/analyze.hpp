@@ -24,7 +24,6 @@ struct AudioStreamMeta {
 
 AudioStreamMeta Analyze(const fs::path &path);
 
-AudioStreamMeta Analyze(const AVFormatInputContextPtr &ifmt, const AVStream *ist,
-                        const AVCodecContextPtr &dctx);
+AudioStreamMeta Analyze(const AVFormatInputContextPtr &ifmt, const AVStream *ist, const AVCodecContextPtr &dctx);
 
 } // namespace Audio::detail

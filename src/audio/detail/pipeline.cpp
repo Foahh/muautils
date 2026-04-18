@@ -7,11 +7,8 @@ extern "C" {
 
 namespace Audio::detail {
 
-void Encode(const AVFramePtr &frame,
-            const AVCodecContextPtr &encoder,
-            const AVFormatOutputContextPtr &output,
-            const AVPacketPtr &pkt,
-            const AVRational src_frame_time_base) {
+void Encode(const AVFramePtr &frame, const AVCodecContextPtr &encoder, const AVFormatOutputContextPtr &output,
+            const AVPacketPtr &pkt, const AVRational src_frame_time_base) {
     if (frame->pts != AV_NOPTS_VALUE && src_frame_time_base.num > 0 && src_frame_time_base.den > 0) {
         frame->pts = av_rescale_q(frame->pts, src_frame_time_base, encoder->time_base);
     }

@@ -12,7 +12,6 @@ extern "C" {
 #include <cstdint>
 
 #include "audio.hpp"
-#include "lib.hpp"
 #include "audio/detail/analyze.hpp"
 #include "audio/detail/error.hpp"
 #include "audio/detail/filter.hpp"
@@ -20,6 +19,7 @@ extern "C" {
 #include "audio/detail/pipeline.hpp"
 #include "audio/detail/raii.hpp"
 #include "audio/detail/target_format.hpp"
+#include "lib.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -71,15 +71,12 @@ struct NormalizePlan {
     }
 };
 
-NormalizePlan planNormalize(const Audio::detail::AudioStreamMeta &meta,
-                            AVCodecID srcCodecId,
-                            double offset) {
+NormalizePlan planNormalize(const Audio::detail::AudioStreamMeta &meta, AVCodecID srcCodecId, double offset) {
     using Audio::detail::DefaultTarget;
     NormalizePlan p{};
     p.gain = DefaultTarget.Loudness - meta.Loudness;
     p.needTransform = srcCodecId != DefaultTarget.CodecId;
-    p.needFormat = meta.SampleRate != DefaultTarget.SampleRate ||
-                   meta.SampleFormat != DefaultTarget.SampleFormat;
+    p.needFormat = meta.SampleRate != DefaultTarget.SampleRate || meta.SampleFormat != DefaultTarget.SampleFormat;
     p.needChannels = meta.Channels != 2;
     p.needVolume = std::abs(p.gain) >= DefaultTarget.GainTolerance;
     p.needLimit = std::abs(meta.TruePeak - DefaultTarget.Limit) >= DefaultTarget.TruePeakTolerance;
@@ -92,10 +89,8 @@ struct NormalizeChain {
     AVFilterContext *sink;
 };
 
-NormalizeChain buildChain(const Audio::detail::AVFilterGraphPtr &graph,
-                          const Audio::detail::AVCodecContextPtr &dctx,
-                          const NormalizePlan &plan,
-                          double offset) {
+NormalizeChain buildChain(const Audio::detail::AVFilterGraphPtr &graph, const Audio::detail::AVCodecContextPtr &dctx,
+                          const NormalizePlan &plan, double offset) {
     using namespace Audio::detail;
 
     AVFilterContext *fsrc = BufferSource(graph, dctx);
@@ -125,8 +120,7 @@ NormalizeChain buildChain(const Audio::detail::AVFilterGraphPtr &graph,
                        DefaultTarget.Limit, DefaultTarget.Attack, DefaultTarget.Release);
     }
 
-    flast = Filter(graph, flast, "aformat", "aformat",
-                   "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
+    flast = Filter(graph, flast, "aformat", "aformat", "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
                    av_get_sample_fmt_name(DefaultTarget.SampleFormat), DefaultTarget.SampleRate);
 
     AVFilterContext *fsnk = Filter(graph, flast, "abuffersink", "abuffersink");
@@ -144,7 +138,8 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
     const auto meta = Analyze(ifmt, ist, dctx);
 
     const auto plan = planNormalize(meta, dctx->codec_id, offset);
-    if (plan.isNoop()) return false;
+    if (plan.isNoop())
+        return false;
 
     auto ret = avformat_seek_file(ifmt.get(), ist->index, INT64_MIN, 0, INT64_MAX, 0);
     av::Check(ret, src, "Failed to seek input to start after loudness analysis");
@@ -167,13 +162,12 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
     const AVPacketPtr pkt(av_packet_alloc());
     av::Require(pkt.get(), "Failed to allocate packet");
 
-    RunGraph(ifmt, ist, dctx, chain.src, chain.sink,
-             [&](AVFrame *f) {
-                 AVFramePtr owned(av_frame_alloc());
-                 av::Require(owned.get(), "Failed to allocate frame");
-                 av_frame_move_ref(owned.get(), f);
-                 Encode(owned, ectx, ofmt, pkt, dctx->time_base);
-             });
+    RunGraph(ifmt, ist, dctx, chain.src, chain.sink, [&](AVFrame *f) {
+        AVFramePtr owned(av_frame_alloc());
+        av::Require(owned.get(), "Failed to allocate frame");
+        av_frame_move_ref(owned.get(), f);
+        Encode(owned, ectx, ofmt, pkt, dctx->time_base);
+    });
 
     for (;;) {
         ret = avcodec_send_frame(ectx.get(), nullptr);

@@ -10,7 +10,13 @@ extern "C" {
 
 #include "audio.hpp"
 #include "lib.hpp"
-#include "utils.hpp"
+#include "audio/detail/error.hpp"
+#include "audio/detail/filter.hpp"
+#include "audio/detail/format.hpp"
+#include "audio/detail/pipeline.hpp"
+#include "audio/detail/raii.hpp"
+
+using namespace Audio::detail;
 
 namespace Audio {
 

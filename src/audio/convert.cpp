@@ -8,6 +8,8 @@ extern "C" {
 #include <libavformat/avformat.h>
 }
 
+#include "audio/detail/analyze.hpp"
+#include "audio/detail/analyze.hpp"
 #include "audio/detail/target_format.hpp"
 
 #include "audio.hpp"

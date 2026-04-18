@@ -20,7 +20,8 @@ add_library(mua_audio STATIC
         src/audio/audio.cpp
         src/audio/detail/format.cpp
         src/audio/detail/filter.cpp
-        src/audio/detail/pipeline.cpp)
+        src/audio/detail/pipeline.cpp
+        src/audio/detail/analyze.cpp)
 target_link_libraries(mua_audio PUBLIC mua_common)
 
 target_include_directories(mua_audio PRIVATE ${FFMPEG_INCLUDE_DIRS})

@@ -2,11 +2,13 @@
 
 #include "audio/audio.hpp"
 #include "audio/convert.hpp"
+#include "audio/detail/analyze.hpp"
 #include "audio/detail/target_format.hpp"
 
 #include <iostream>
 
 using namespace Audio;
+using namespace Audio::detail;
 
 int main(const int argc, char *argv[]) {
     Setup();

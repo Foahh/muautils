@@ -5,8 +5,8 @@ extern "C" {
 #include <libavformat/avformat.h>
 }
 
-#include "audio/audio.hpp"
 #include "audio/detail/raii.hpp"
+#include "audio/detail/target_format.hpp"
 #include "lib.hpp"
 
 #include <string>
@@ -21,7 +21,7 @@ AVFormatOutputContextPtr OpenAVFormatOutput(const fs::path &path);
 AVStream *GetBestAudioStream(const AVFormatInputContextPtr &ctx);
 
 AVCodecContextPtr OpenDecoder(const AVStream *st);
-AVCodecContextPtr OpenEncoder(const ::Audio::NormalizeFormat &params);
+AVCodecContextPtr OpenEncoder(const TargetFormat &params);
 
 AVStream *OpenOutputStream(const fs::path &path,
                            const AVFormatOutputContextPtr &ofmt,

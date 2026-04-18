@@ -65,7 +65,7 @@ AVCodecContextPtr OpenDecoder(const AVStream *st) {
     return ctx;
 }
 
-AVCodecContextPtr OpenEncoder(const ::Audio::NormalizeFormat &params) {
+AVCodecContextPtr OpenEncoder(const TargetFormat &params) {
     auto ectx = AVCodecContextPtr(avcodec_alloc_context3(nullptr));
     av::Ensure(ectx.get(), "Failed to allocate encoder context");
     ectx->codec_type = AVMEDIA_TYPE_AUDIO;

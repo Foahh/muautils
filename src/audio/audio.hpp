@@ -22,25 +22,6 @@ struct AudioStreamMeta {
     double TruePeak = 0.0;
 };
 
-struct NormalizeFormat {
-    AVCodecID CodecId;
-
-    AVSampleFormat SampleFormat;
-    int SampleRate;
-
-    double Loudness; // LUFS
-    double Limit;    // dB
-    int Attack;      // ms
-    int Release;     // ms
-
-    double TruePeakTolerance; // dB
-    double GainTolerance;     // dB
-    double OffsetTolerance;   // seconds
-};
-
-static constexpr NormalizeFormat FMT_PCM_S16LE_8LU = {
-    AV_CODEC_ID_PCM_S16LE, AV_SAMPLE_FMT_S16, 48000, -8.0, 0, 12, 200, 1, 1, 0.0001};
-
 AudioStreamMeta Analyze(const fs::path &path);
 
 void EnsureValid(const fs::path &path);

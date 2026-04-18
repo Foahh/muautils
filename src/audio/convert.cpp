@@ -8,6 +8,8 @@ extern "C" {
 #include <libavformat/avformat.h>
 }
 
+#include "audio/detail/target_format.hpp"
+
 #include "audio.hpp"
 #include "lib.hpp"
 #include "audio/detail/error.hpp"
@@ -21,27 +23,27 @@ using namespace Audio::detail;
 namespace Audio {
 
 // Note: Only supports stereo output for now
-bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double offset, const NormalizeFormat &target) {
+bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double offset) {
     const auto meta = Analyze(srcPath);
-    const double gain = target.Loudness - meta.Loudness;
+    const double gain = kTargetFormat.Loudness - meta.Loudness;
 
     const auto ifmt = OpenAVFormatInput(srcPath);
     const auto ist = GetBestAudioStream(ifmt);
     const auto dctx = OpenDecoder(ist);
 
-    const bool needTransform = dctx->codec_id != target.CodecId;
-    const bool needFormat = meta.SampleRate != target.SampleRate || meta.SampleFormat != target.SampleFormat;
+    const bool needTransform = dctx->codec_id != kTargetFormat.CodecId;
+    const bool needFormat = meta.SampleRate != kTargetFormat.SampleRate || meta.SampleFormat != kTargetFormat.SampleFormat;
     const bool needChannels = meta.Channels != 2;
-    const bool needVolume = std::abs(gain) >= target.GainTolerance;
-    const bool needLimit = std::abs(meta.TruePeak - target.Limit) >= target.TruePeakTolerance;
-    const bool needOffset = std::abs(offset) >= target.OffsetTolerance;
+    const bool needVolume = std::abs(gain) >= kTargetFormat.GainTolerance;
+    const bool needLimit = std::abs(meta.TruePeak - kTargetFormat.Limit) >= kTargetFormat.TruePeakTolerance;
+    const bool needOffset = std::abs(offset) >= kTargetFormat.OffsetTolerance;
 
     if (!needTransform && !needFormat && !needChannels && !needVolume && !needLimit && !needOffset) {
         return false;
     }
 
     const auto ofmt = OpenAVFormatOutput(dstPath);
-    const AVCodecContextPtr ectx = OpenEncoder(FMT_PCM_S16LE_8LU);
+    const AVCodecContextPtr ectx = OpenEncoder(kTargetFormat);
     OpenOutputStream(dstPath, ofmt, ectx);
 
     const AVFilterGraphPtr graph(avfilter_graph_alloc());
@@ -72,11 +74,11 @@ bool Normalize(const fs::path &srcPath, const fs::path &dstPath, const double of
     if (needLimit) {
         spdlog::info("Applying limiter filter");
         flast = Filter(graph, flast, "alimiter", "alimiter", "limit={}dB:attack={}:release={}:level=0",
-                       FMT_PCM_S16LE_8LU.Limit, FMT_PCM_S16LE_8LU.Attack, FMT_PCM_S16LE_8LU.Release);
+                       kTargetFormat.Limit, kTargetFormat.Attack, kTargetFormat.Release);
     }
 
     flast = Filter(graph, flast, "aformat", "aformat", "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
-                   av_get_sample_fmt_name(FMT_PCM_S16LE_8LU.SampleFormat), FMT_PCM_S16LE_8LU.SampleRate);
+                   av_get_sample_fmt_name(kTargetFormat.SampleFormat), kTargetFormat.SampleRate);
 
     AVFilterContext *fsnk = Filter(graph, flast, "abuffersink", "abuffersink");
 

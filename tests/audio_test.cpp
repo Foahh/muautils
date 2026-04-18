@@ -2,6 +2,7 @@
 
 #include "audio/audio.hpp"
 #include "audio/convert.hpp"
+#include "audio/detail/target_format.hpp"
 
 #include <iostream>
 
@@ -53,9 +54,9 @@ TEST_CASE("Normalize") {
         REQUIRE(fs::file_size(dstPath) > 0);
 
         const auto meta = Analyze(dstPath);
-        REQUIRE(meta.SampleRate == FMT_PCM_S16LE_8LU.SampleRate);
+        REQUIRE(meta.SampleRate == Audio::detail::kTargetFormat.SampleRate);
         REQUIRE(meta.Channels == 2);
-        REQUIRE(meta.SampleFormat == FMT_PCM_S16LE_8LU.SampleFormat);
+        REQUIRE(meta.SampleFormat == Audio::detail::kTargetFormat.SampleFormat);
 
         ret = Normalize(dstPath, tmpPath, 0.0);
         REQUIRE_FALSE(ret);

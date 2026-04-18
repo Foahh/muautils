@@ -71,16 +71,16 @@ struct NormalizePlan {
 NormalizePlan planNormalize(const Audio::detail::AudioStreamMeta &meta,
                             AVCodecID srcCodecId,
                             double offset) {
-    using Audio::detail::kTargetFormat;
+    using Audio::detail::DefaultTarget;
     NormalizePlan p{};
-    p.gain = kTargetFormat.Loudness - meta.Loudness;
-    p.needTransform = srcCodecId != kTargetFormat.CodecId;
-    p.needFormat = meta.SampleRate != kTargetFormat.SampleRate ||
-                   meta.SampleFormat != kTargetFormat.SampleFormat;
+    p.gain = DefaultTarget.Loudness - meta.Loudness;
+    p.needTransform = srcCodecId != DefaultTarget.CodecId;
+    p.needFormat = meta.SampleRate != DefaultTarget.SampleRate ||
+                   meta.SampleFormat != DefaultTarget.SampleFormat;
     p.needChannels = meta.Channels != 2;
-    p.needVolume = std::abs(p.gain) >= kTargetFormat.GainTolerance;
-    p.needLimit = std::abs(meta.TruePeak - kTargetFormat.Limit) >= kTargetFormat.TruePeakTolerance;
-    p.needOffset = std::abs(offset) >= kTargetFormat.OffsetTolerance;
+    p.needVolume = std::abs(p.gain) >= DefaultTarget.GainTolerance;
+    p.needLimit = std::abs(meta.TruePeak - DefaultTarget.Limit) >= DefaultTarget.TruePeakTolerance;
+    p.needOffset = std::abs(offset) >= DefaultTarget.OffsetTolerance;
     return p;
 }
 
@@ -114,12 +114,12 @@ AVFilterContext *buildChain(const Audio::detail::AVFilterGraphPtr &graph,
     if (plan.needLimit) {
         spdlog::info("Applying limiter filter");
         flast = Filter(graph, flast, "alimiter", "alimiter", "limit={}dB:attack={}:release={}:level=0",
-                       kTargetFormat.Limit, kTargetFormat.Attack, kTargetFormat.Release);
+                       DefaultTarget.Limit, DefaultTarget.Attack, DefaultTarget.Release);
     }
 
     flast = Filter(graph, flast, "aformat", "aformat",
                    "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
-                   av_get_sample_fmt_name(kTargetFormat.SampleFormat), kTargetFormat.SampleRate);
+                   av_get_sample_fmt_name(DefaultTarget.SampleFormat), DefaultTarget.SampleRate);
 
     return Filter(graph, flast, "abuffersink", "abuffersink");
 }
@@ -139,7 +139,7 @@ bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double off
     if (plan.isNoop()) return false;
 
     const auto ofmt = OpenAVFormatOutput(dst);
-    const AVCodecContextPtr ectx = OpenEncoder(kTargetFormat);
+    const AVCodecContextPtr ectx = OpenEncoder(DefaultTarget);
     OpenOutputStream(dst, ofmt, ectx);
 
     const AVFilterGraphPtr graph(avfilter_graph_alloc());

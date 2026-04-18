@@ -24,7 +24,7 @@ struct TargetFormat {
     double OffsetTolerance;   // seconds
 };
 
-inline constexpr TargetFormat kTargetFormat = {
+inline constexpr TargetFormat DefaultTarget = {
     AV_CODEC_ID_PCM_S16LE, AV_SAMPLE_FMT_S16, 48000, -8.0, 0, 12, 200, 1, 1, 0.0001};
 
 } // namespace Audio::detail

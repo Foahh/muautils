@@ -55,9 +55,9 @@ TEST_CASE("Normalize") {
         REQUIRE(fs::file_size(dstPath) > 0);
 
         const auto meta = Analyze(dstPath);
-        REQUIRE(meta.SampleRate == Audio::detail::kTargetFormat.SampleRate);
+        REQUIRE(meta.SampleRate == Audio::detail::DefaultTarget.SampleRate);
         REQUIRE(meta.Channels == 2);
-        REQUIRE(meta.SampleFormat == Audio::detail::kTargetFormat.SampleFormat);
+        REQUIRE(meta.SampleFormat == Audio::detail::DefaultTarget.SampleFormat);
 
         ret = Normalize(dstPath, tmpPath, 0.0);
         REQUIRE_FALSE(ret);

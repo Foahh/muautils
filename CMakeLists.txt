@@ -33,6 +33,7 @@ pkg_check_modules(VIPS_CPP REQUIRED IMPORTED_TARGET vips-cpp)
 add_library(mua_image STATIC
         src/image/detail/chunk.cpp
         src/image/detail/vips.cpp
+        src/image/detail/dds.cpp
         src/image/convert.cpp
         src/image/image.cpp)
 target_link_libraries(mua_image PUBLIC mua_common)

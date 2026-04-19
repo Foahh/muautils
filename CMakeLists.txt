@@ -44,7 +44,9 @@ else ()
 endif ()
 add_library(mua_image STATIC
         src/image/detail/chunk.cpp
-        src/image/detail/raster.cpp
+        src/image/detail/raster_inspect.cpp
+        src/image/detail/raster_decode.cpp
+        src/image/detail/raster_resize.cpp
         src/image/detail/dds.cpp
         src/image/image.cpp)
 target_link_libraries(mua_image PUBLIC mua_common)

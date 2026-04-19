@@ -1,5 +1,4 @@
 #!/bin/sh
-# Linux/macOS counterpart to build.ps1: configure with vcpkg toolchain and build the mua target.
 set -eu
 
 BUILD_DIR="${BUILD_DIR:-cmake-build-vcpkg}"

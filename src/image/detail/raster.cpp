@@ -71,6 +71,10 @@ struct TurboJpegDeleter {
                                    const EncodedImageInfo &info);
 [[nodiscard]] RgbaImage DecodeWebp(const fs::path &path, const std::span<const uint8_t> bytes,
                                    const EncodedImageInfo &info);
+[[nodiscard]] RgbaImage DecodeJpegScaled(const fs::path &path, const std::span<const uint8_t> bytes,
+                                         const EncodedImageInfo &info, unsigned targetWidth, unsigned targetHeight);
+[[nodiscard]] RgbaImage DecodeWebpScaled(const fs::path &path, const std::span<const uint8_t> bytes,
+                                         unsigned targetWidth, unsigned targetHeight);
 
 [[nodiscard]] EncodedImageInfo InspectPng(const fs::path &path, const std::span<const uint8_t> bytes) {
     png_image image{};
@@ -132,6 +136,45 @@ struct TurboJpegDeleter {
     ThrowDecodeError(path, "Unsupported image format");
 }
 
+[[nodiscard]] bool CanDownscaleDuringDecode(const EncodedImageInfo &info, const unsigned targetWidth,
+                                            const unsigned targetHeight) {
+    return targetWidth > 0 && targetHeight > 0 && targetWidth <= info.width && targetHeight <= info.height;
+}
+
+[[nodiscard]] tjscalingfactor ChooseJpegScalingFactor(const EncodedImageInfo &info, const unsigned targetWidth,
+                                                      const unsigned targetHeight) {
+    if (!CanDownscaleDuringDecode(info, targetWidth, targetHeight)) {
+        return TJUNSCALED;
+    }
+
+    int factorCount = 0;
+    tjscalingfactor *factors = tjGetScalingFactors(&factorCount);
+    if (factors == nullptr || factorCount <= 0) {
+        return TJUNSCALED;
+    }
+
+    tjscalingfactor best = TJUNSCALED;
+    size_t bestArea = PixelBufferSize(info.width, info.height);
+    bool found = false;
+
+    for (int i = 0; i < factorCount; ++i) {
+        const unsigned scaledWidth = static_cast<unsigned>(TJSCALED(info.width, factors[i]));
+        const unsigned scaledHeight = static_cast<unsigned>(TJSCALED(info.height, factors[i]));
+        if (scaledWidth < targetWidth || scaledHeight < targetHeight) {
+            continue;
+        }
+
+        const size_t area = static_cast<size_t>(scaledWidth) * scaledHeight;
+        if (!found || area < bestArea) {
+            best = factors[i];
+            bestArea = area;
+            found = true;
+        }
+    }
+
+    return found ? best : TJUNSCALED;
+}
+
 [[nodiscard]] RgbaImage DecodePng(const fs::path &path, const std::span<const uint8_t> bytes) {
     png_image image{};
     image.version = PNG_IMAGE_VERSION;
@@ -169,6 +212,32 @@ struct TurboJpegDeleter {
     return decoded;
 }
 
+[[nodiscard]] RgbaImage DecodeJpegScaled(const fs::path &path, const std::span<const uint8_t> bytes,
+                                         const EncodedImageInfo &info, const unsigned targetWidth,
+                                         const unsigned targetHeight) {
+    const tjscalingfactor factor = ChooseJpegScalingFactor(info, targetWidth, targetHeight);
+    if (factor.num == TJUNSCALED.num && factor.denom == TJUNSCALED.denom) {
+        return DecodeJpeg(path, bytes, info);
+    }
+
+    std::unique_ptr<void, TurboJpegDeleter> handle(tjInitDecompress());
+    if (!handle) {
+        ThrowDecodeError(path, "Failed to initialize JPEG decoder");
+    }
+
+    const unsigned scaledWidth = static_cast<unsigned>(TJSCALED(info.width, factor));
+    const unsigned scaledHeight = static_cast<unsigned>(TJSCALED(info.height, factor));
+    RgbaImage decoded{.width = scaledWidth,
+                      .height = scaledHeight,
+                      .pixels = std::vector<uint8_t>(PixelBufferSize(scaledWidth, scaledHeight))};
+    if (tjDecompress2(handle.get(), bytes.data(), static_cast<unsigned long>(bytes.size()), decoded.pixels.data(),
+                      static_cast<int>(scaledWidth), 0, static_cast<int>(scaledHeight), TJPF_RGBA,
+                      TJFLAG_FASTDCT) != 0) {
+        ThrowDecodeError(path, tjGetErrorStr2(handle.get()));
+    }
+    return decoded;
+}
+
 [[nodiscard]] RgbaImage DecodeWebp(const fs::path &path, const std::span<const uint8_t> bytes,
                                    const EncodedImageInfo &info) {
     using WebpPtr = std::unique_ptr<uint8_t, decltype(&WebPFree)>;
@@ -184,6 +253,37 @@ struct TurboJpegDeleter {
                       .pixels = std::vector<uint8_t>(PixelBufferSize(static_cast<unsigned>(width),
                                                                       static_cast<unsigned>(height)))};
     std::memcpy(decoded.pixels.data(), decodedBytes.get(), decoded.pixels.size());
+    return decoded;
+}
+
+[[nodiscard]] RgbaImage DecodeWebpScaled(const fs::path &path, const std::span<const uint8_t> bytes,
+                                         const unsigned targetWidth, const unsigned targetHeight) {
+    WebPDecoderConfig config{};
+    if (!WebPInitDecoderConfig(&config)) {
+        ThrowDecodeError(path, "Failed to initialize WebP decoder");
+    }
+    if (WebPGetFeatures(bytes.data(), bytes.size(), &config.input) != VP8_STATUS_OK) {
+        ThrowDecodeError(path, "Invalid WebP image");
+    }
+
+    config.options.use_scaling = 1;
+    config.options.scaled_width = static_cast<int>(targetWidth);
+    config.options.scaled_height = static_cast<int>(targetHeight);
+    config.output.colorspace = MODE_RGBA;
+
+    RgbaImage decoded{.width = targetWidth,
+                      .height = targetHeight,
+                      .pixels = std::vector<uint8_t>(PixelBufferSize(targetWidth, targetHeight))};
+    config.output.is_external_memory = 1;
+    config.output.u.RGBA.rgba = decoded.pixels.data();
+    config.output.u.RGBA.stride = static_cast<int>(targetWidth * 4);
+    config.output.u.RGBA.size = decoded.pixels.size();
+
+    const VP8StatusCode status = WebPDecode(bytes.data(), bytes.size(), &config);
+    WebPFreeDecBuffer(&config.output);
+    if (status != VP8_STATUS_OK) {
+        ThrowDecodeError(path, "Failed to decode WebP image");
+    }
     return decoded;
 }
 
@@ -275,7 +375,30 @@ RgbaImage LoadResizedRgba(const fs::path &path, const int width, const int heigh
     if (width <= 0 || height <= 0) {
         throw lib::FileError(path, "Requested image size must be positive");
     }
-    return ResizeRgba(LoadRgba(path), static_cast<unsigned>(width), static_cast<unsigned>(height));
+
+    const unsigned targetWidth = static_cast<unsigned>(width);
+    const unsigned targetHeight = static_cast<unsigned>(height);
+    const std::vector<uint8_t> bytes = ReadFileData(path);
+    try {
+        const EncodedImageInfo info = InspectImage(path, bytes);
+        switch (info.format) {
+        case EncodedImageFormat::Jpeg:
+            return ResizeRgba(DecodeJpegScaled(path, bytes, info, targetWidth, targetHeight), targetWidth,
+                              targetHeight);
+        case EncodedImageFormat::Png:
+            return ResizeRgba(DecodePng(path, bytes), targetWidth, targetHeight);
+        case EncodedImageFormat::Webp:
+            if (CanDownscaleDuringDecode(info, targetWidth, targetHeight)) {
+                return DecodeWebpScaled(path, bytes, targetWidth, targetHeight);
+            }
+            return ResizeRgba(DecodeWebp(path, bytes, info), targetWidth, targetHeight);
+        }
+    } catch (const lib::FileError &) {
+        throw;
+    } catch (const std::exception &e) {
+        ThrowDecodeError(path, e.what());
+    }
+    ThrowDecodeError(path, "Unsupported image format");
 }
 
 RgbaImage MakeBlankRgba(const unsigned width, const unsigned height) {

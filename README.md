@@ -10,7 +10,7 @@ Audio work is built on **FFmpeg**. Image work uses **libvips** for loading and p
 - A C++23 toolchain
 - [**vcpkg**](https://github.com/microsoft/vcpkg) (manifest mode is supported; this repo pins a baseline in `vcpkg-configuration.json` and adds an **overlay port** for FFmpeg under `ports/`)
 - **pkg-config** and **libvips** with C++ bindings (`vips-cpp` must be visible to `pkg_check_modules`)
-- **OpenMP** for C++ (`find_package(OpenMP)` must succeed). Typical setups: GCC/Clang on Linux with `libgomp` / your distro’s OpenMP package; Apple Clang often needs [Homebrew `libomp`](https://formulae.brew.sh/formula/libomp) and a matching `OpenMP_ROOT`; MSVC includes OpenMP support when enabled in the build tools.
+- **OpenMP** for C++: **MSVC** uses the built-in runtime (`/openmp` + `vcomp` / `vcompd`); other toolchains need CMake’s `FindOpenMP` (e.g. GCC/Clang on Linux with `libgomp`, Apple Clang often with [Homebrew `libomp`](https://formulae.brew.sh/formula/libomp)). The installed CMake package still calls `find_dependency(OpenMP)` so consumers link OpenMP correctly when they use the static libraries.
 - **Git** (for submodules)
 
 ## Clone and submodules

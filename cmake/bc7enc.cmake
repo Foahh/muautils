@@ -31,7 +31,14 @@ endif ()
 
 set_target_properties(bc7enc PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-find_package(OpenMP REQUIRED)
-target_link_libraries(bc7enc PUBLIC OpenMP::OpenMP_CXX)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(bc7enc PUBLIC $<$<COMPILE_LANGUAGE:CXX>:/openmp>)
+    target_link_libraries(bc7enc PUBLIC
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CONFIG:Debug>>:vcompd>
+            $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CONFIG:Debug>>>:vcomp>)
+else ()
+    find_package(OpenMP REQUIRED)
+    target_link_libraries(bc7enc PUBLIC OpenMP::OpenMP_CXX)
+endif ()
 
 unset(_bc7enc_root)

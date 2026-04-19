@@ -2,14 +2,14 @@
 
 C++23 utilities for audio and image processing: static libraries you can link into your own tools, plus a small CLI named `mua`.
 
-Audio work is built on **FFmpeg**. Image work uses **libvips** for loading and processing, **bc7enc_rdo** (vendored) for BC7 DDS output, and related helpers for jacket/stage conversion and DDS extraction.
+Audio work is built on **FFmpeg**. Image work uses **libjpeg-turbo**, **libpng**, and **libwebp** for decoding, **bc7enc_rdo** (vendored) for BC7 DDS output, and related helpers for jacket/stage conversion and DDS extraction.
 
 ## Requirements
 
 - **CMake** 3.28 or newer
 - A C++23 toolchain
 - [**vcpkg**](https://github.com/microsoft/vcpkg) (manifest mode is supported; this repo pins a baseline in `vcpkg-configuration.json` and adds an **overlay port** for FFmpeg under `ports/`)
-- **pkg-config** and **libvips** with C++ bindings (`vips-cpp` must be visible to `pkg_check_modules`)
+- Image codec dependencies resolved through **vcpkg** (`libjpeg-turbo`, `libpng`, and `libwebp`)
 - **OpenMP** for C++: **MSVC** uses the built-in runtime (`/openmp` + `vcomp` / `vcompd`); other toolchains need CMake’s `FindOpenMP` (e.g. GCC/Clang on Linux with `libgomp`, Apple Clang often with [Homebrew `libomp`](https://formulae.brew.sh/formula/libomp)). The installed CMake package still calls `find_dependency(OpenMP)` so consumers link OpenMP correctly when they use the static libraries.
 - **Git** (for submodules)
 
@@ -27,7 +27,7 @@ If the submodule is missing, CMake fails with a message pointing at this step.
 
 ## Configure and build
 
-Point CMake at the vcpkg toolchain so manifest dependencies resolve (CLI11, Catch2, spdlog, fmt, and the custom FFmpeg feature from `vcpkg.json`):
+Point CMake at the vcpkg toolchain so manifest dependencies resolve (CLI11, Catch2, spdlog, fmt, libjpeg-turbo, libpng, libwebp, and the custom FFmpeg feature from `vcpkg.json`):
 
 ```bash
 export VCPKG_ROOT=/path/to/vcpkg
@@ -87,8 +87,8 @@ Headers live under `src/`; installed layouts mirror that for public `.hpp` files
 - **`Audio`** (`audio/audio.hpp`): `Initialize()`, `EnsureValid(path)`, `Normalize(src, dst, offset)` → `bool`
 - **`Image`** (`image/image.hpp`): `Initialize()`, `EnsureValid`, `ConvertJacket`, `ConvertStage`, `ExtractDds`
 
-Link `mua_audio` / `mua_image` and satisfy their transitive dependencies (FFmpeg for audio, libvips and the bc7 object library for image, plus spdlog/fmt via the common interface).
+Link `mua_audio` / `mua_image` and satisfy their transitive dependencies (FFmpeg for audio, libjpeg-turbo/libpng/libwebp and the bc7 object library for image, plus spdlog/fmt via the common interface).
 
 ## License
 
-This project is licensed under the **GNU Lesser General Public License v2.1** — see [LICENSE](LICENSE). Third-party code (vcpkg ports, FFmpeg, libvips, bc7enc_rdo, etc.) remains under their respective licenses.
+This project is licensed under the **GNU Lesser General Public License v2.1** — see [LICENSE](LICENSE). Third-party code (vcpkg ports, FFmpeg, libjpeg-turbo, libpng, libwebp, bc7enc_rdo, etc.) remains under their respective licenses.

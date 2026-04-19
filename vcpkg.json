@@ -6,6 +6,9 @@
     "catch2",
     "spdlog",
     "fmt",
+    "libjpeg-turbo",
+    "libpng",
+    "libwebp",
     {
       "name": "ffmpeg",
       "features": [

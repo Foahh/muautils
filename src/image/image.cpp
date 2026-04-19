@@ -1,37 +1,25 @@
 // src/image/image.cpp
 #include "image.hpp"
 
-#include <fmt/format.h>
 #include <future>
-#include <vips/vips8>
 
 #include "detail/chunk.hpp"
 #include "detail/dds.hpp"
-#include "detail/vips.hpp"
+#include "detail/raster.hpp"
 
 using namespace Image::detail;
 
 void Image::Initialize() {
-    if (vips_init("mua") != 0) {
-        throw std::runtime_error("Failed to initialize libvips");
-    }
+    // no-op
 }
 
 void Image::EnsureValid(const fs::path &srcPath) {
-    try {
-        vips::VImage::new_from_file(lib::PathToUtf8(srcPath).c_str(),
-                                    vips::VImage::option()->set("fail_on", VIPS_FAIL_ON_WARNING));
-    } catch (const vips::VError &e) {
-        throw lib::FileError(srcPath, fmt::format("Invalid image: {}", e.what()));
-    }
+    static_cast<void>(LoadRgba(srcPath));
 }
 
 void Image::ConvertJacket(const fs::path &srcPath, const fs::path &dstPath) {
-    vips::VImage img = LoadShrunkRgba(srcPath, 300, 300);
-    const unsigned w = img.width();
-    const unsigned h = img.height();
-    const auto pixels = RgbaPixelsFrom(img);
-    SaveJacketDds(pixels.span(), w, h, dstPath);
+    const RgbaImage img = LoadResizedRgba(srcPath, 300, 300);
+    SaveJacketDds(img.span(), img.width, img.height, dstPath);
 }
 
 void Image::ConvertStage(const fs::path &bgSrcPath, const fs::path &stSrcPath, const fs::path &stDstPath,

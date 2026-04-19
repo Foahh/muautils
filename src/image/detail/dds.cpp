@@ -1,9 +1,10 @@
 // src/image/detail/dds.cpp
 #include "dds.hpp"
 
-#include "vips.hpp"
+#include "raster.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <fmt/format.h>
 #include <fstream>
@@ -80,33 +81,23 @@ namespace {
 } // namespace
 
 std::vector<uint8_t> ConvertBackground(const fs::path &srcPath) {
-    vips::VImage img = LoadShrunkRgba(srcPath, 1920, 1080);
-    const unsigned w = img.width();
-    const unsigned h = img.height();
-    const auto pixels = RgbaPixelsFrom(img);
-    return EncodeToLegacyDds(pixels.span(), w, h, DXGI_FORMAT_BC1_UNORM);
+    const RgbaImage img = LoadResizedRgba(srcPath, 1920, 1080);
+    return EncodeToLegacyDds(img.span(), img.width, img.height, DXGI_FORMAT_BC1_UNORM);
 }
 
 std::vector<uint8_t> ConvertEffect(const std::array<fs::path, 4> &srcPaths) {
     constexpr int tileSize = 256;
 
-    std::vector<vips::VImage> tiles;
-    tiles.reserve(4);
+    std::array<RgbaImage, 4> tiles;
     for (int i = 0; i < 4; ++i) {
         if (srcPaths[i].empty()) {
-            vips::VImage blank = vips::VImage::black(tileSize, tileSize, vips::VImage::option()->set("bands", 4));
-            blank = blank.cast(VIPS_FORMAT_UCHAR);
-            blank = blank.copy(vips::VImage::option()->set("interpretation", VIPS_INTERPRETATION_sRGB));
-            tiles.push_back(std::move(blank));
+            tiles[i] = MakeBlankRgba(tileSize, tileSize);
         } else {
-            tiles.push_back(LoadShrunkRgba(srcPaths[i], tileSize, tileSize));
+            tiles[i] = LoadResizedRgba(srcPaths[i], tileSize, tileSize);
         }
     }
-    vips::VImage canvas = vips::VImage::arrayjoin(tiles, vips::VImage::option()->set("across", 2));
-    const unsigned w = canvas.width();
-    const unsigned h = canvas.height();
-    const auto pixels = RgbaPixelsFrom(canvas);
-    return EncodeToLegacyDds(pixels.span(), w, h, DXGI_FORMAT_BC3_UNORM);
+    const RgbaImage canvas = JoinTiles2x2(tiles);
+    return EncodeToLegacyDds(canvas.span(), canvas.width, canvas.height, DXGI_FORMAT_BC3_UNORM);
 }
 
 void SaveJacketDds(std::span<const uint8_t> rgba, const unsigned width, const unsigned height,

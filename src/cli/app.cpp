@@ -1,4 +1,4 @@
-#include "cli/cli.hpp"
+#include "cli/app.hpp"
 
 #include "audio/audio.hpp"
 #include "image/image.hpp"
@@ -137,7 +137,7 @@ template <typename T> int run_impl(int argc, T **argv) {
 
 } // namespace
 
-namespace mua::cli {
+namespace mua::app {
 
 int run(const int argc, char **argv) {
     return run_impl(argc, argv);
@@ -149,4 +149,4 @@ int run(const int argc, wchar_t **argv) {
 }
 #endif
 
-} // namespace mua::cli
+} // namespace mua::app

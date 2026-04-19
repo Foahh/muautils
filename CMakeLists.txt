@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.28)
 project(muautils LANGUAGES CXX C)
 set(CMAKE_CXX_STANDARD 23)
 
+if (MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif ()
+
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
@@ -28,18 +32,31 @@ target_link_directories(mua_audio PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(mua_audio PRIVATE ${FFMPEG_LIBRARIES})
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/bc7enc.cmake")
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(VIPS_CPP REQUIRED IMPORTED_TARGET vips-cpp)
+find_package(PNG REQUIRED)
+find_package(WebP CONFIG REQUIRED)
+find_package(libjpeg-turbo CONFIG REQUIRED)
+if (TARGET libjpeg-turbo::turbojpeg)
+    set(MUA_TURBOJPEG_TARGET libjpeg-turbo::turbojpeg)
+elseif (TARGET libjpeg-turbo::turbojpeg-static)
+    set(MUA_TURBOJPEG_TARGET libjpeg-turbo::turbojpeg-static)
+else ()
+    message(FATAL_ERROR "libjpeg-turbo TurboJPEG target not found")
+endif ()
 add_library(mua_image STATIC
         src/image/detail/chunk.cpp
-        src/image/detail/vips.cpp
+        src/image/detail/raster.cpp
         src/image/detail/dds.cpp
         src/image/image.cpp)
 target_link_libraries(mua_image PUBLIC mua_common)
 
-target_link_libraries(mua_image PRIVATE $<BUILD_INTERFACE:bc7enc> PkgConfig::VIPS_CPP)
+target_link_libraries(mua_image PRIVATE
+        $<BUILD_INTERFACE:bc7enc>
+        PNG::PNG
+        WebP::webp
+        WebP::webpdecoder
+        ${MUA_TURBOJPEG_TARGET})
 
-add_executable(mua src/main.cpp src/cli/cli.cpp)
+add_executable(mua src/main.cpp src/cli/app.cpp)
 find_package(CLI11 CONFIG REQUIRED)
 target_link_libraries(mua PRIVATE mua_audio mua_image CLI11::CLI11)
 
@@ -55,13 +72,13 @@ target_link_libraries(test_image PRIVATE mua_image Catch2::Catch2 Catch2::Catch2
 target_include_directories(test_audio PRIVATE ${PRIVATE_INCLUDE_DIR})
 target_include_directories(test_image PRIVATE ${PRIVATE_INCLUDE_DIR})
 
-set(_mua_msvc_targets mua mua_audio mua_image test_audio test_image)
+set(_mua_msvc_targets bc7enc mua mua_audio mua_image test_audio test_image)
 if (MSVC)
-    set_target_properties(${_mua_msvc_targets} PROPERTIES
-            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-    target_compile_options(${_mua_msvc_targets} PRIVATE
-            "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/utf-8>"
-            "$<$<COMPILE_LANG_AND_ID:C,MSVC>:/utf-8>")
+    foreach (_mua_target IN LISTS _mua_msvc_targets)
+        target_compile_options(${_mua_target} PRIVATE
+                "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/utf-8>"
+                "$<$<COMPILE_LANG_AND_ID:C,MSVC>:/utf-8>")
+    endforeach ()
 endif ()
 unset(_mua_msvc_targets)
 

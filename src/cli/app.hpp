@@ -1,6 +1,6 @@
 #pragma once
 
-namespace mua::cli {
+namespace mua::app {
 
 int run(int argc, char **argv);
 
@@ -8,4 +8,4 @@ int run(int argc, char **argv);
 int run(int argc, wchar_t **argv);
 #endif
 
-} // namespace mua::cli
+} // namespace mua::app

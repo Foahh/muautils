@@ -25,6 +25,12 @@ enum class EncodedImageFormat {
     Webp
 };
 
+struct EncodedImageInfo {
+    EncodedImageFormat format;
+    unsigned width;
+    unsigned height;
+};
+
 struct TurboJpegDeleter {
     void operator()(void *handle) const noexcept {
         if (handle != nullptr) {
@@ -60,6 +66,72 @@ struct TurboJpegDeleter {
     throw lib::FileError(path, message);
 }
 
+[[nodiscard]] RgbaImage DecodePng(const fs::path &path, const std::span<const uint8_t> bytes);
+[[nodiscard]] RgbaImage DecodeJpeg(const fs::path &path, const std::span<const uint8_t> bytes,
+                                   const EncodedImageInfo &info);
+[[nodiscard]] RgbaImage DecodeWebp(const fs::path &path, const std::span<const uint8_t> bytes,
+                                   const EncodedImageInfo &info);
+
+[[nodiscard]] EncodedImageInfo InspectPng(const fs::path &path, const std::span<const uint8_t> bytes) {
+    png_image image{};
+    image.version = PNG_IMAGE_VERSION;
+    if (!png_image_begin_read_from_memory(&image, bytes.data(), bytes.size())) {
+        ThrowDecodeError(path, image.message ? image.message : "Failed to parse PNG");
+    }
+
+    const EncodedImageInfo info{.format = EncodedImageFormat::Png, .width = image.width, .height = image.height};
+    png_image_free(&image);
+    if (info.width == 0 || info.height == 0) {
+        ThrowDecodeError(path, "Invalid PNG dimensions");
+    }
+    return info;
+}
+
+[[nodiscard]] EncodedImageInfo InspectJpeg(const fs::path &path, const std::span<const uint8_t> bytes) {
+    std::unique_ptr<void, TurboJpegDeleter> handle(tjInitDecompress());
+    if (!handle) {
+        ThrowDecodeError(path, "Failed to initialize JPEG decoder");
+    }
+
+    int width = 0;
+    int height = 0;
+    int subsamp = 0;
+    int colorspace = 0;
+    if (tjDecompressHeader3(handle.get(), bytes.data(), static_cast<unsigned long>(bytes.size()), &width, &height,
+                            &subsamp, &colorspace) != 0) {
+        ThrowDecodeError(path, tjGetErrorStr2(handle.get()));
+    }
+    if (width <= 0 || height <= 0) {
+        ThrowDecodeError(path, "Invalid JPEG dimensions");
+    }
+
+    return {.format = EncodedImageFormat::Jpeg, .width = static_cast<unsigned>(width),
+            .height = static_cast<unsigned>(height)};
+}
+
+[[nodiscard]] EncodedImageInfo InspectWebp(const fs::path &path, const std::span<const uint8_t> bytes) {
+    int width = 0;
+    int height = 0;
+    if (!WebPGetInfo(bytes.data(), bytes.size(), &width, &height) || width <= 0 || height <= 0) {
+        ThrowDecodeError(path, "Invalid WebP image");
+    }
+
+    return {.format = EncodedImageFormat::Webp, .width = static_cast<unsigned>(width),
+            .height = static_cast<unsigned>(height)};
+}
+
+[[nodiscard]] EncodedImageInfo InspectImage(const fs::path &path, const std::span<const uint8_t> bytes) {
+    switch (DetectFormat(bytes)) {
+    case EncodedImageFormat::Jpeg:
+        return InspectJpeg(path, bytes);
+    case EncodedImageFormat::Png:
+        return InspectPng(path, bytes);
+    case EncodedImageFormat::Webp:
+        return InspectWebp(path, bytes);
+    }
+    ThrowDecodeError(path, "Unsupported image format");
+}
+
 [[nodiscard]] RgbaImage DecodePng(const fs::path &path, const std::span<const uint8_t> bytes) {
     png_image image{};
     image.version = PNG_IMAGE_VERSION;
@@ -79,43 +151,29 @@ struct TurboJpegDeleter {
     return decoded;
 }
 
-[[nodiscard]] RgbaImage DecodeJpeg(const fs::path &path, const std::span<const uint8_t> bytes) {
+[[nodiscard]] RgbaImage DecodeJpeg(const fs::path &path, const std::span<const uint8_t> bytes,
+                                   const EncodedImageInfo &info) {
     std::unique_ptr<void, TurboJpegDeleter> handle(tjInitDecompress());
     if (!handle) {
         ThrowDecodeError(path, "Failed to initialize JPEG decoder");
     }
 
-    int width = 0;
-    int height = 0;
-    int subsamp = 0;
-    int colorspace = 0;
-    if (tjDecompressHeader3(handle.get(), bytes.data(), static_cast<unsigned long>(bytes.size()), &width, &height,
-                            &subsamp, &colorspace) != 0) {
-        ThrowDecodeError(path, tjGetErrorStr2(handle.get()));
-    }
-    if (width <= 0 || height <= 0) {
-        ThrowDecodeError(path, "Invalid JPEG dimensions");
-    }
-
-    RgbaImage decoded{.width = static_cast<unsigned>(width),
-                      .height = static_cast<unsigned>(height),
-                      .pixels = std::vector<uint8_t>(PixelBufferSize(static_cast<unsigned>(width),
-                                                                      static_cast<unsigned>(height)))};
+    RgbaImage decoded{.width = info.width,
+                      .height = info.height,
+                      .pixels = std::vector<uint8_t>(PixelBufferSize(info.width, info.height))};
     if (tjDecompress2(handle.get(), bytes.data(), static_cast<unsigned long>(bytes.size()), decoded.pixels.data(),
-                      width, 0, height, TJPF_RGBA, TJFLAG_ACCURATEDCT) != 0) {
+                      static_cast<int>(info.width), 0, static_cast<int>(info.height), TJPF_RGBA,
+                      TJFLAG_ACCURATEDCT) != 0) {
         ThrowDecodeError(path, tjGetErrorStr2(handle.get()));
     }
     return decoded;
 }
 
-[[nodiscard]] RgbaImage DecodeWebp(const fs::path &path, const std::span<const uint8_t> bytes) {
-    int width = 0;
-    int height = 0;
-    if (!WebPGetInfo(bytes.data(), bytes.size(), &width, &height) || width <= 0 || height <= 0) {
-        ThrowDecodeError(path, "Invalid WebP image");
-    }
-
+[[nodiscard]] RgbaImage DecodeWebp(const fs::path &path, const std::span<const uint8_t> bytes,
+                                   const EncodedImageInfo &info) {
     using WebpPtr = std::unique_ptr<uint8_t, decltype(&WebPFree)>;
+    int width = static_cast<int>(info.width);
+    int height = static_cast<int>(info.height);
     WebpPtr decodedBytes(WebPDecodeRGBA(bytes.data(), bytes.size(), &width, &height), &WebPFree);
     if (!decodedBytes) {
         ThrowDecodeError(path, "Failed to decode WebP image");
@@ -182,16 +240,28 @@ struct TurboJpegDeleter {
 
 } // namespace
 
+void ValidateImage(const fs::path &path) {
+    const std::vector<uint8_t> bytes = ReadFileData(path);
+    try {
+        static_cast<void>(InspectImage(path, bytes));
+    } catch (const lib::FileError &) {
+        throw;
+    } catch (const std::exception &e) {
+        ThrowDecodeError(path, e.what());
+    }
+}
+
 RgbaImage LoadRgba(const fs::path &path) {
     const std::vector<uint8_t> bytes = ReadFileData(path);
     try {
-        switch (DetectFormat(bytes)) {
+        const EncodedImageInfo info = InspectImage(path, bytes);
+        switch (info.format) {
         case EncodedImageFormat::Jpeg:
-            return DecodeJpeg(path, bytes);
+            return DecodeJpeg(path, bytes, info);
         case EncodedImageFormat::Png:
             return DecodePng(path, bytes);
         case EncodedImageFormat::Webp:
-            return DecodeWebp(path, bytes);
+            return DecodeWebp(path, bytes, info);
         }
     } catch (const lib::FileError &) {
         throw;

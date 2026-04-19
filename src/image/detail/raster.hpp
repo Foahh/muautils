@@ -19,6 +19,8 @@ struct RgbaImage {
     }
 };
 
+void ValidateImage(const fs::path &path);
+
 [[nodiscard]] RgbaImage LoadRgba(const fs::path &path);
 
 [[nodiscard]] RgbaImage LoadResizedRgba(const fs::path &path, int width, int height);

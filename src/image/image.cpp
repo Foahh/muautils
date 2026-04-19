@@ -14,7 +14,7 @@ void Image::Initialize() {
 }
 
 void Image::EnsureValid(const fs::path &srcPath) {
-    static_cast<void>(LoadRgba(srcPath));
+    ValidateImage(srcPath);
 }
 
 void Image::ConvertJacket(const fs::path &srcPath, const fs::path &dstPath) {

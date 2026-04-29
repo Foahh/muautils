@@ -32,6 +32,8 @@ target_link_directories(mua_audio PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(mua_audio PRIVATE ${FFMPEG_LIBRARIES})
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/bc7enc.cmake")
+
+find_package(ZLIB REQUIRED)
 find_package(PNG REQUIRED)
 find_package(WebP CONFIG REQUIRED)
 find_package(libjpeg-turbo CONFIG REQUIRED)

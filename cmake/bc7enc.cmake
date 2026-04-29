@@ -21,11 +21,10 @@ target_include_directories(bc7enc SYSTEM PUBLIC "${_bc7enc_root}")
 target_compile_definitions(bc7enc PUBLIC SUPPORT_BC7E=0)
 
 if (MSVC)
-    target_compile_options(bc7enc PRIVATE /w /FI"cstdint")
+    target_compile_options(bc7enc PRIVATE /FI"cstdint")
 else ()
     target_compile_options(bc7enc PRIVATE
             -fno-strict-aliasing
-            -w
             -include cstdint)
 endif ()
 

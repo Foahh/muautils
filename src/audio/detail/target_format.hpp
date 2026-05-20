@@ -14,17 +14,17 @@ struct TargetFormat {
     AVSampleFormat SampleFormat;
     int SampleRate;
 
-    double Loudness; // LUFS
-    double Limit;    // dB
-    int Attack;      // ms
-    int Release;     // ms
+    double Loudness;      // LUFS
+    double LoudnessRange; // LU
+    double Limit;         // dBTP
 
-    double TruePeakTolerance; // dB
-    double GainTolerance;     // dB
-    double OffsetTolerance;   // seconds
+    double TruePeakTolerance;     // dB
+    double LoudnessRangeTolerance; // LU
+    double GainTolerance;         // dB
+    double OffsetTolerance;       // seconds
 };
 
 inline constexpr TargetFormat DefaultTarget = {
-    AV_CODEC_ID_PCM_S16LE, AV_SAMPLE_FMT_S16, 48000, -8.0, 0, 12, 200, 1, 1, 0.0001};
+    AV_CODEC_ID_PCM_S16LE, AV_SAMPLE_FMT_S16, 48000, -8.25, 11.0, 0.0, 0.5, 0.1, 0.2, 0.0001};
 
 } // namespace Audio::detail

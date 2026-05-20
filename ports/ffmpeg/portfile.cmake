@@ -2,7 +2,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO ffmpeg/ffmpeg
     REF "n${VERSION}"
-    SHA512 1dee3967057619dd7f2f78c63de85bb97af16c974bd9225c2336d42c7c8765c04f77490aac36af2daf953bc52c7faa37750a09265e133708f6a1709028573834
+    SHA512 e858e92e5eb08d562302cde371af55917df6e1fe53994e18462a3c929a40ede1828c2bd53c2a7d65a2cfd791782ead3cd94efb2def904f49cb5dd8ab5cd4256f
     HEAD_REF master
     PATCHES
         0002-fix-msvc-link.patch
@@ -16,6 +16,7 @@ vcpkg_from_github(
         0045-use-prebuilt-bin2c.patch
         0046-fix-msvc-detection.patch
         0047-fix-msvc-utf8.patch
+        0048-backport-23039.patch
 )
 
 if(SOURCE_PATH MATCHES " ")
@@ -567,11 +568,11 @@ else()
 endif()
 
 if ("qsv" IN_LIST FEATURES)
-    set(OPTIONS "${OPTIONS} --enable-libmfx --enable-encoder=h264_qsv --enable-decoder=h264_qsv")
-    set(WITH_MFX ON)
+    set(OPTIONS "${OPTIONS} --enable-libvpl --enable-encoder=h264_qsv --enable-decoder=h264_qsv")
+    set(WITH_VPL ON)
 else()
-    set(OPTIONS "${OPTIONS} --disable-libmfx")
-    set(WITH_MFX OFF)
+    set(OPTIONS "${OPTIONS} --disable-libvpl")
+    set(WITH_VPL OFF)
 endif()
 
 if ("vaapi" IN_LIST FEATURES)
@@ -603,12 +604,12 @@ set(OPTIONS_CROSS "--enable-cross-compile")
 if ("custom" IN_LIST FEATURES)
     set(OPTIONS "${OPTIONS} --disable-everything")
     set(OPTIONS "${OPTIONS} --enable-protocol=file")
-    set(OPTIONS "${OPTIONS} --enable-encoder=pcm_s16le")
+    set(OPTIONS "${OPTIONS} --enable-encoder=pcm_u8,pcm_s16le,pcm_s32le,pcm_s64le,pcm_f32le,pcm_f64le")
     set(OPTIONS "${OPTIONS} --enable-muxer=wav")
     set(OPTIONS "${OPTIONS} --enable-decoder=aac,aac_at,aac_fixed,aac_latm,aac_mediacodec,adpcm_4xm,adpcm_adx,adpcm_afc,adpcm_agm,adpcm_aica,adpcm_argo,adpcm_ct,adpcm_dtk,adpcm_ea,adpcm_ea_maxis_xa,adpcm_ea_r1,adpcm_ea_r2,adpcm_ea_r3,adpcm_ea_xas,adpcm_g722,adpcm_g726,adpcm_g726le,adpcm_ima_acorn,adpcm_ima_alp,adpcm_ima_amv,adpcm_ima_apc,adpcm_ima_apm,adpcm_ima_cunning,adpcm_ima_dat4,adpcm_ima_dk3,adpcm_ima_dk4,adpcm_ima_ea_eacs,adpcm_ima_ea_sead,adpcm_ima_iss,adpcm_ima_moflex,adpcm_ima_mtf,adpcm_ima_oki,adpcm_ima_qt,adpcm_ima_qt_at,adpcm_ima_rad,adpcm_ima_smjpeg,adpcm_ima_ssi,adpcm_ima_wav,adpcm_ima_ws,adpcm_ms,adpcm_mtaf,adpcm_psx,adpcm_sbpro_2,adpcm_sbpro_3,adpcm_sbpro_4,adpcm_swf,adpcm_thp,adpcm_thp_le,adpcm_vima,adpcm_xa,adpcm_xmd,adpcm_yamaha,adpcm_zork,flac,mp3,mp3_at,mp3_mediacodec,mp3adu,mp3adufloat,mp3float,mp3on4,mp3on4float,opus,pcm_alaw,pcm_alaw_at,pcm_bluray,pcm_dvd,pcm_f16le,pcm_f24le,pcm_f32be,pcm_f32le,pcm_f64be,pcm_f64le,pcm_lxf,pcm_mulaw,pcm_mulaw_at,pcm_s16be,pcm_s16be_planar,pcm_s16le,pcm_s16le_planar,pcm_s24be,pcm_s24daud,pcm_s24le,pcm_s24le_planar,pcm_s32be,pcm_s32le,pcm_s32le_planar,pcm_s64be,pcm_s64le,pcm_s8,pcm_s8_planar,pcm_sga,pcm_u16be,pcm_u16le,pcm_u24be,pcm_u24le,pcm_u32be,pcm_u32le,pcm_u8,vorbis,wmalossless,wmapro,wmav1,wmav2,wmavoice")
     set(OPTIONS "${OPTIONS} --enable-demuxer=aac,flac,mp3,ogg,pcm_alaw,pcm_f32be,pcm_f32le,pcm_f64be,pcm_f64le,pcm_mulaw,pcm_s16be,pcm_s16le,pcm_s24be,pcm_s24le,pcm_s32be,pcm_s32le,pcm_s8,pcm_u16be,pcm_u16le,pcm_u24be,pcm_u24le,pcm_u32be,pcm_u32le,pcm_u8,wav,matroska,mov,m4v")
     set(OPTIONS "${OPTIONS} --enable-parser=aac,aac_latm,flac,mpegaudio,opus,vorbis")
-    set(OPTIONS "${OPTIONS} --enable-filter=ebur128,adelay,atrim,volume,alimiter,aformat,aresample,channelmap,pan,asetpts,loudnorm")
+    set(OPTIONS "${OPTIONS} --enable-filter=ebur128,adelay,atrim,volume,alimiter,aformat,aresample,channelmap,pan,asetpts")
 endif ()
 
 # ffmpeg needs --cross-prefix option to use appropriate tools for cross-compiling.

@@ -19,7 +19,8 @@ constexpr int kExitNoop = 2;
 
 struct AudioNormalizeOpts {
     fs::path src, dst;
-    double offset = 0.0;
+    Audio::NormalizeOptions options;
+    std::string sample_format = av_get_sample_fmt_name(Audio::NormalizeOptions{}.SampleFormat);
 } audio_normalize_opts;
 
 struct SrcOnlyOpts {
@@ -35,6 +36,14 @@ struct ConvertStageOpts {
     std::array<fs::path, 4> fx{};
 } convert_stage_opts;
 
+AVSampleFormat ParseSampleFormat(const std::string &name) {
+    const auto sampleFormat = av_get_sample_fmt(name.c_str());
+    if (sampleFormat == AV_SAMPLE_FMT_NONE) {
+        throw std::runtime_error(fmt::format("Unknown audio sample format: {}", name));
+    }
+    return sampleFormat;
+}
+
 template <typename T> int run_impl(int argc, T **argv) {
     spdlog::set_default_logger(spdlog::stderr_color_mt("Manipulate"));
 
@@ -47,7 +56,28 @@ template <typename T> int run_impl(int argc, T **argv) {
     const auto subcmd_audio_normalize = app.add_subcommand("audio_normalize", "Audio::Normalize")->fallthrough();
     subcmd_audio_normalize->add_option("-s,--src", audio_normalize_opts.src)->required();
     subcmd_audio_normalize->add_option("-d,--dst", audio_normalize_opts.dst)->required();
-    subcmd_audio_normalize->add_option("-o,--offset", audio_normalize_opts.offset, "offset (s)");
+    subcmd_audio_normalize->add_option("-o,--offset", audio_normalize_opts.options.Offset, "offset (s)");
+    subcmd_audio_normalize
+        ->add_option("--sample-format", audio_normalize_opts.sample_format, "sample format (u8, s16, s32, s64, flt, dbl)")
+        ->default_val(audio_normalize_opts.sample_format);
+    subcmd_audio_normalize
+        ->add_option("--sample-rate", audio_normalize_opts.options.SampleRate, "sample rate (Hz)")
+        ->check(CLI::PositiveNumber);
+    subcmd_audio_normalize->add_option("--lufs", audio_normalize_opts.options.Loudness, "target loudness (LUFS)");
+    subcmd_audio_normalize->add_option("--lu", audio_normalize_opts.options.LoudnessRange, "target loudness range (LU)");
+    subcmd_audio_normalize->add_option("--dbtp", audio_normalize_opts.options.TruePeak, "target true peak (dBTP)");
+    subcmd_audio_normalize
+        ->add_option("--true-peak-tolerance", audio_normalize_opts.options.TruePeakTolerance, "true peak tolerance (dB)")
+        ->check(CLI::NonNegativeNumber);
+    subcmd_audio_normalize
+        ->add_option("--lu-tolerance", audio_normalize_opts.options.LoudnessRangeTolerance, "loudness range tolerance (LU)")
+        ->check(CLI::NonNegativeNumber);
+    subcmd_audio_normalize
+        ->add_option("--gain-tolerance", audio_normalize_opts.options.GainTolerance, "gain tolerance (dB)")
+        ->check(CLI::NonNegativeNumber);
+    subcmd_audio_normalize
+        ->add_option("--offset-tolerance", audio_normalize_opts.options.OffsetTolerance, "offset tolerance (s)")
+        ->check(CLI::NonNegativeNumber);
 
     const auto subcmd_audio_ensure_valid = app.add_subcommand("audio_check", "Audio::EnsureValid")->fallthrough();
     subcmd_audio_ensure_valid->add_option("-s,--src", audio_ensure_valid_opts.src)->required();
@@ -104,7 +134,8 @@ template <typename T> int run_impl(int argc, T **argv) {
     try {
         if (subcmd_audio_normalize->parsed()) {
             Audio::Initialize();
-            ret = Audio::Normalize(audio_normalize_opts.src, audio_normalize_opts.dst, audio_normalize_opts.offset)
+            audio_normalize_opts.options.SampleFormat = ParseSampleFormat(audio_normalize_opts.sample_format);
+            ret = Audio::Normalize(audio_normalize_opts.src, audio_normalize_opts.dst, audio_normalize_opts.options)
                       ? kExitOk
                       : kExitNoop;
         } else if (subcmd_audio_ensure_valid->parsed()) {

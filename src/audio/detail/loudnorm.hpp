@@ -2,6 +2,7 @@
 #pragma once
 
 #include "audio/detail/raii.hpp"
+#include "audio/detail/target_format.hpp"
 
 extern "C" {
 #include <libavfilter/avfilter.h>
@@ -19,11 +20,12 @@ struct LoudNormStats {
 };
 
 AVFilterContext *ApplyOffset(const AVFilterGraphPtr &graph, const AVCodecContextPtr &dctx, AVFilterContext *from,
-                             double offset);
+                             double offset, const TargetFormat &target);
 
-AVFilterContext *ApplyLoudNorm(const AVFilterGraphPtr &graph, AVFilterContext *from, const LoudNormStats &stats);
+AVFilterContext *ApplyLoudNorm(const AVFilterGraphPtr &graph, AVFilterContext *from, const LoudNormStats &stats,
+                               const TargetFormat &target);
 
 LoudNormStats AnalyzeLoudNorm(const AVFormatInputContextPtr &ifmt, const AVStream *ist, const AVCodecContextPtr &dctx,
-                              double offset);
+                              double offset, const TargetFormat &target);
 
 } // namespace Audio::detail

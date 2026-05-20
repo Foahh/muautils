@@ -103,9 +103,11 @@ TEST_CASE("Analyze") {
 TEST_CASE("Normalize") {
     const auto srcPath = GetOutputPath(L"test1_quiet.wav");
     const auto dstPath = GetOutputPath(L"test1_normalized.wav");
+    const auto customDstPath = GetOutputPath(L"test1_custom_normalized.wav");
     const auto tmpPath = GetOutputPath(L"test1_impossible.wav");
 
     std::filesystem::remove(dstPath);
+    std::filesystem::remove(customDstPath);
     std::filesystem::remove(tmpPath);
     WriteScaledPcm16Wav(GetInputPath(L"test.wav"), srcPath, 0.25);
 
@@ -113,20 +115,46 @@ TEST_CASE("Normalize") {
         const auto sourceMeta = Analyze(srcPath);
         REQUIRE(sourceMeta.Loudness < -15.0);
 
-        bool ret = Normalize(srcPath, dstPath, 0.0);
+        NormalizeOptions options;
+        bool ret = Normalize(srcPath, dstPath, options);
         REQUIRE(ret);
 
         REQUIRE(fs::exists(dstPath));
         REQUIRE(fs::file_size(dstPath) > 0);
 
         const auto meta = Analyze(dstPath);
-        REQUIRE(meta.SampleRate == Audio::detail::DefaultTarget.SampleRate);
+        REQUIRE(meta.SampleRate == options.SampleRate);
         REQUIRE(meta.Channels == 2);
-        REQUIRE(meta.SampleFormat == Audio::detail::DefaultTarget.SampleFormat);
+        REQUIRE(meta.SampleFormat == options.SampleFormat);
         REQUIRE(meta.Loudness == Catch::Approx(-8.5).margin(0.2));
 
-        ret = Normalize(dstPath, tmpPath, 0.0);
+        ret = Normalize(dstPath, tmpPath, options);
         REQUIRE_FALSE(ret);
         REQUIRE(!fs::exists(tmpPath));
+    }
+
+    SECTION("Normalize with custom public options") {
+        NormalizeOptions options;
+        options.SampleFormat = AV_SAMPLE_FMT_S32;
+        options.SampleRate = 44100;
+        options.Loudness = -12.0;
+        options.LoudnessRange = 7.0;
+        options.TruePeak = -1.0;
+        options.TruePeakTolerance = 0.25;
+        options.LoudnessRangeTolerance = 0.2;
+        options.GainTolerance = 0.1;
+        options.OffsetTolerance = 0.0001;
+
+        const bool ret = Normalize(srcPath, customDstPath, options);
+        REQUIRE(ret);
+
+        REQUIRE(fs::exists(customDstPath));
+        REQUIRE(fs::file_size(customDstPath) > 0);
+
+        const auto meta = Analyze(customDstPath);
+        REQUIRE(meta.SampleRate == options.SampleRate);
+        REQUIRE(meta.Channels == 2);
+        REQUIRE(meta.SampleFormat == options.SampleFormat);
+        REQUIRE(meta.Loudness == Catch::Approx(options.Loudness).margin(0.3));
     }
 }

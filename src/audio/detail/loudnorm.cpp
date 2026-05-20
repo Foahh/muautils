@@ -105,11 +105,11 @@ void SetStringOption(AVFilterContext *ctx, const char *name, const std::string &
 }
 
 AVFilterContext *AddLoudNorm(const AVFilterGraphPtr &graph, AVFilterContext *from, const char *instance,
-                             const LoudNormStats *stats, const fs::path *statsFile) {
+                             const LoudNormStats *stats, const fs::path *statsFile, const TargetFormat &target) {
     AVFilterContext *ctx = Filter(graph, "loudnorm", instance);
-    SetDoubleOption(ctx, "I", DefaultTarget.Loudness);
-    SetDoubleOption(ctx, "LRA", DefaultTarget.LoudnessRange);
-    SetDoubleOption(ctx, "TP", DefaultTarget.Limit);
+    SetDoubleOption(ctx, "I", target.Loudness);
+    SetDoubleOption(ctx, "LRA", target.LoudnessRange);
+    SetDoubleOption(ctx, "TP", target.TruePeak);
     SetIntOption(ctx, "linear", 1);
 
     if (stats) {
@@ -135,8 +135,8 @@ AVFilterContext *AddLoudNorm(const AVFilterGraphPtr &graph, AVFilterContext *fro
 } // namespace
 
 AVFilterContext *ApplyOffset(const AVFilterGraphPtr &graph, const AVCodecContextPtr &dctx, AVFilterContext *from,
-                             const double offset) {
-    if (std::abs(offset) < DefaultTarget.OffsetTolerance) {
+                             const double offset, const TargetFormat &target) {
+    if (std::abs(offset) < target.OffsetTolerance) {
         return from;
     }
 
@@ -152,12 +152,13 @@ AVFilterContext *ApplyOffset(const AVFilterGraphPtr &graph, const AVCodecContext
     return Filter(graph, from, "asetpts", "asetpts", "expr=PTS-STARTPTS");
 }
 
-AVFilterContext *ApplyLoudNorm(const AVFilterGraphPtr &graph, AVFilterContext *from, const LoudNormStats &stats) {
-    return AddLoudNorm(graph, from, "loudnorm", &stats, nullptr);
+AVFilterContext *ApplyLoudNorm(const AVFilterGraphPtr &graph, AVFilterContext *from, const LoudNormStats &stats,
+                               const TargetFormat &target) {
+    return AddLoudNorm(graph, from, "loudnorm", &stats, nullptr, target);
 }
 
 LoudNormStats AnalyzeLoudNorm(const AVFormatInputContextPtr &ifmt, const AVStream *ist, const AVCodecContextPtr &dctx,
-                              const double offset) {
+                              const double offset, const TargetFormat &target) {
     TempStatsFile statsFile;
 
     {
@@ -165,8 +166,8 @@ LoudNormStats AnalyzeLoudNorm(const AVFormatInputContextPtr &ifmt, const AVStrea
         av::Require(graph.get(), "Failed to allocate filter graph");
 
         AVFilterContext *fsrc = BufferSource(graph, dctx);
-        AVFilterContext *flast = ApplyOffset(graph, dctx, fsrc, offset);
-        flast = AddLoudNorm(graph, flast, "loudnorm_probe", nullptr, &statsFile.path());
+        AVFilterContext *flast = ApplyOffset(graph, dctx, fsrc, offset, target);
+        flast = AddLoudNorm(graph, flast, "loudnorm_probe", nullptr, &statsFile.path(), target);
         AVFilterContext *fsnk = Filter(graph, flast, "abuffersink", "loudnorm_probe_out");
 
         const auto ret = avfilter_graph_config(graph.get(), nullptr);

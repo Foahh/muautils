@@ -70,17 +70,17 @@ struct NormalizePlan {
     }
 };
 
-NormalizePlan planNormalize(const AVCodecContextPtr &dctx, const LoudNormStats &stats, const double offset) {
-    using Audio::detail::DefaultTarget;
+NormalizePlan planNormalize(const AVCodecContextPtr &dctx, const LoudNormStats &stats, const double offset,
+                            const TargetFormat &target) {
     NormalizePlan p{};
     p.loudNorm = stats;
-    p.needTransform = dctx->codec_id != DefaultTarget.CodecId;
-    p.needFormat = dctx->sample_rate != DefaultTarget.SampleRate || dctx->sample_fmt != DefaultTarget.SampleFormat;
+    p.needTransform = dctx->codec_id != target.CodecId;
+    p.needFormat = dctx->sample_rate != target.SampleRate || dctx->sample_fmt != target.SampleFormat;
     p.needChannels = dctx->ch_layout.nb_channels != 2;
-    p.needLoudNorm = std::abs(stats.InputI - DefaultTarget.Loudness) >= DefaultTarget.GainTolerance ||
-                     stats.InputTP > DefaultTarget.Limit + DefaultTarget.TruePeakTolerance ||
-                     stats.InputLRA > DefaultTarget.LoudnessRange + DefaultTarget.LoudnessRangeTolerance;
-    p.needOffset = std::abs(offset) >= DefaultTarget.OffsetTolerance;
+    p.needLoudNorm = std::abs(stats.InputI - target.Loudness) >= target.GainTolerance ||
+                     stats.InputTP > target.TruePeak + target.TruePeakTolerance ||
+                     stats.InputLRA > target.LoudnessRange + target.LoudnessRangeTolerance;
+    p.needOffset = std::abs(offset) >= target.OffsetTolerance;
     return p;
 }
 
@@ -90,19 +90,19 @@ struct NormalizeChain {
 };
 
 NormalizeChain buildChain(const Audio::detail::AVFilterGraphPtr &graph, const Audio::detail::AVCodecContextPtr &dctx,
-                          const NormalizePlan &plan, double offset) {
+                          const NormalizePlan &plan, double offset, const TargetFormat &target) {
     using namespace Audio::detail;
 
     AVFilterContext *fsrc = BufferSource(graph, dctx);
-    AVFilterContext *flast = ApplyOffset(graph, dctx, fsrc, offset);
+    AVFilterContext *flast = ApplyOffset(graph, dctx, fsrc, offset, target);
 
     if (plan.needLoudNorm) {
         spdlog::info("Applying two-pass loudnorm filter");
-        flast = ApplyLoudNorm(graph, flast, plan.loudNorm);
+        flast = ApplyLoudNorm(graph, flast, plan.loudNorm, target);
     }
 
     flast = Filter(graph, flast, "aformat", "aformat", "sample_fmts={}:sample_rates={}:channel_layouts=stereo",
-                   av_get_sample_fmt_name(DefaultTarget.SampleFormat), DefaultTarget.SampleRate);
+                   av_get_sample_fmt_name(target.SampleFormat), target.SampleRate);
 
     AVFilterContext *fsnk = Filter(graph, flast, "abuffersink", "abuffersink");
     return {fsrc, fsnk};
@@ -117,28 +117,29 @@ void seekInputToStart(const Audio::detail::AVFormatInputContextPtr &ifmt, const 
 
 } // namespace
 
-bool Audio::Normalize(const fs::path &src, const fs::path &dst, const double offset) {
+bool Audio::Normalize(const fs::path &src, const fs::path &dst, const NormalizeOptions &options) {
     using namespace Audio::detail;
 
+    const auto target = MakeTargetFormat(options);
     const auto ifmt = OpenAVFormatInput(src);
     const auto ist = GetBestAudioStream(ifmt);
     const auto dctx = OpenDecoder(ist);
-    const auto loudNormStats = AnalyzeLoudNorm(ifmt, ist, dctx, offset);
+    const auto loudNormStats = AnalyzeLoudNorm(ifmt, ist, dctx, options.Offset, target);
 
-    const auto plan = planNormalize(dctx, loudNormStats, offset);
+    const auto plan = planNormalize(dctx, loudNormStats, options.Offset, target);
     if (plan.isNoop())
         return false;
 
     seekInputToStart(ifmt, ist, dctx, src);
 
     const auto ofmt = OpenAVFormatOutput(dst);
-    const AVCodecContextPtr ectx = OpenEncoder(DefaultTarget);
+    const AVCodecContextPtr ectx = OpenEncoder(target);
     AVStream *const ost = OpenOutputStream(dst, ofmt, ectx);
 
     const AVFilterGraphPtr graph(avfilter_graph_alloc());
     av::Require(graph.get(), "Failed to allocate filter graph");
 
-    const auto chain = buildChain(graph, dctx, plan, offset);
+    const auto chain = buildChain(graph, dctx, plan, options.Offset, target);
 
     auto ret = avfilter_graph_config(graph.get(), nullptr);
     av::Check(ret, "Failed to configure filter graph.");

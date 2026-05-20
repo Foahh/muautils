@@ -41,10 +41,7 @@
             "avcodec",
             "avformat",
             "avfilter",
-            "swresample",
-            "mp3lame",
-            "opus",
-            "vorbis"
+            "swresample"
           ]
         }
       ]

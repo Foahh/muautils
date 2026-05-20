@@ -126,7 +126,7 @@ TEST_CASE("Normalize") {
         REQUIRE(meta.SampleRate == options.SampleRate);
         REQUIRE(meta.Channels == 2);
         REQUIRE(meta.SampleFormat == options.SampleFormat);
-        REQUIRE(meta.Loudness == Catch::Approx(-8.5).margin(0.2));
+        REQUIRE(meta.Loudness == Catch::Approx(options.Loudness).margin(0.2));
 
         ret = Normalize(dstPath, tmpPath, options);
         REQUIRE_FALSE(ret);

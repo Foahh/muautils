@@ -25,6 +25,16 @@ cmake --build build
 
 On Windows, use the `vcpkg` preset in `CMakePresets.json` (targets `x64-windows-static`).
 
+### vcpkg overlay ports
+
+Some dependencies use overlay ports under `ports/` (see `vcpkg-configuration.json`). To refresh a port from upstream vcpkg and re-apply local changes:
+
+```powershell
+# Requires VCPKG_ROOT or VCPKG_DIR pointing at a microsoft/vcpkg clone
+.\scripts\patch-ffmpeg-port.ps1
+.\scripts\patch-openimage-port.ps1
+```
+
 **Tests:**
 ```bash
 ctest --test-dir build --output-on-failure

@@ -1,0 +1,23 @@
+diff --git a/ports/openimageio/vcpkg.json b/ports/openimageio/vcpkg.json
+--- a/ports/openimageio/vcpkg.json
++++ b/ports/openimageio/vcpkg.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "openimageio",
+-  "version": "3.1.12.0",
++  "version": "3.1.13.1",
+   "description": "A library for reading and writing images, and a bunch of related classes, utilities, and application.",
+   "homepage": "https://github.com/AcademySoftwareFoundation/OpenImageIO",
+   "license": "BSD-3-Clause",
+diff --git a/ports/openimageio/portfile.cmake b/ports/openimageio/portfile.cmake
+--- a/ports/openimageio/portfile.cmake
++++ b/ports/openimageio/portfile.cmake
+@@ -24,7 +24,7 @@ vcpkg_from_github(
+     OUT_SOURCE_PATH SOURCE_PATH
+     REPO AcademySoftwareFoundation/OpenImageIO
+     REF "v${VERSION}"
+-    SHA512 d00877c1bca8c5ca19e4534787783a12c892215403282425d1685920b5f424b6fac217f049243c2106e5d981c7508115145e08ce5c5dd78633073c1ddd883f3e
++    SHA512 199faba7fed3c59b8e625b5f06bcfa178a6efbfb3f2d160ae4bcba4b29b674e55ae78b47eef1839a451885693e0b5e0d1cc2be610351435736b8d703d22682b4
+     HEAD_REF master
+     PATCHES ${PATCHES}
+ )

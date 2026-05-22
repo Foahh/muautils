@@ -1,0 +1,32 @@
+muautils — source code offer (LGPL 2.1)
+=======================================
+
+This program includes muautils (the "mua" tool and its libraries), which are
+licensed under the GNU Lesser General Public License, version 2.1 (LGPL-2.1).
+
+Corresponding source code
+-------------------------
+The complete corresponding source code for the muautils version linked into the
+distributed mua binary is available from:
+
+  https://github.com/Foahh/muautils
+
+Use the same commit or release tag that was used to build the mua binary you
+received. If you obtained mua through PenguinTools, that version is recorded in
+the application's third-party notices or release metadata.
+
+Written offer
+-------------
+For at least three years from the date of distribution, we will provide a copy
+of the complete machine-readable source code for muautils (and, on request,
+information needed to rebuild the distributed mua binary with a modified
+muautils) at no more than our cost of performing the distribution.
+
+Contact the PenguinTools distributor named in your copy of the software, or
+open an issue at the PenguinTools source repository from which you obtained
+this build.
+
+Build information
+-----------------
+Typical Windows static builds use vcpkg triplet x64-windows-static. See
+NOTICE in this directory for the dependency profile and third-party components.

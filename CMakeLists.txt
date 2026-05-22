@@ -116,3 +116,5 @@ install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/muautilsConfig.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/muautilsConfigVersion.cmake"
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/muautils)
+
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/install-legal.cmake")

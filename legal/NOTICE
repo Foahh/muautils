@@ -1,0 +1,69 @@
+muautils — third-party software notices
+========================================
+
+This distribution includes muautils and statically linked open-source
+components. muautils is licensed under the GNU Lesser General Public
+License, version 2.1. See LICENSE and SOURCE-OFFER.txt in this directory.
+
+Third-party components are listed below. Full license texts are in the
+licenses/ subdirectory.
+
+Build profile (reference)
+-------------------------
+  Triplet: x64-windows-static (vcpkg)
+  FFmpeg: feature "custom" (LGPL 2.1+ build)
+  OpenImageIO: feature "webp"
+  vcpkg baseline: e5a4f54c0d562059e9ccc6f7e7150667da58fe41
+
+LGPL-2.1 (complete text: licenses/LGPL-2.1.txt)
+------------------------------------------------
+  muautils — https://github.com/Foahh/muautils
+  FFmpeg 8.1.1 — https://ffmpeg.org/
+
+Apache-2.0
+----------
+  OpenImageIO 3.1.13.1 — licenses/openimageio.txt
+    (includes embedded third-party notices from upstream THIRD-PARTY.md)
+
+BSD-3-Clause
+------------
+  OpenColorIO — licenses/opencolorio.txt
+  OpenEXR — licenses/openexr.txt
+  Imath — licenses/imath.txt
+  CLI11 — licenses/cli11.txt
+  libwebp — licenses/libwebp.txt
+
+BSD-2-Clause
+------------
+  openjph — licenses/openjph.txt
+
+MIT
+---
+  fmt — licenses/fmt.txt
+  spdlog — licenses/spdlog.txt
+  yaml-cpp — licenses/yaml-cpp.txt
+  robin-map — licenses/robin-map.txt
+  libdeflate — licenses/libdeflate.txt
+  expat — licenses/expat.txt
+  bc7enc_rdo — licenses/bc7enc_rdo.txt (MIT or public domain; attribution appreciated)
+
+Other permissive licenses (full text in licenses/)
+--------------------------------------------------
+  zlib — licenses/zlib.txt
+  libpng (PNG Reference Library License version 2) — licenses/libpng.txt
+  libjpeg-turbo — licenses/libjpeg-turbo.txt
+  libtiff — licenses/tiff.txt
+  liblzma (XZ Utils liblzma, 0BSD) — licenses/liblzma.txt
+  bzip2 — licenses/bzip2.txt
+  minizip-ng — licenses/minizip-ng.txt
+  pystring — licenses/pystring.txt
+  zstd (dual BSD/GPLv2; BSD applies to library use here) — licenses/zstd.txt
+
+Patents
+-------
+  Copyright licenses above do not grant patent rights. Some FFmpeg decoders
+  (e.g. AAC, MP3) may be subject to patent licensing in your jurisdiction.
+
+Not included in shipped mua
+---------------------------
+  Catch2 (tests only)

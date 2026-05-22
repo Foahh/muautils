@@ -74,3 +74,5 @@ Link `mua_audio` or `mua_image` and include from `src/`:
 ## License
 
 LGPLv2.1. Third-party dependencies retain their own licenses.
+
+Redistribution of static builds must include the legal files installed under `share/doc/muautils/` (or equivalent). See `legal/NOTICE` and `legal/SOURCE-OFFER.txt` for LGPL source and relinking obligations.

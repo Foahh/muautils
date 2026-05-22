@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 
+#include "image/detail/chunk.hpp"
 #include "image/image.hpp"
 
 using namespace Image;
@@ -84,6 +85,21 @@ TEST_CASE("ConvertStage") {
 
         REQUIRE(std::filesystem::exists(stDstPath));
     }
+}
+
+TEST_CASE("ReplaceChunks") {
+    const std::vector<uint8_t> data = {'a', 'a', '0', '1', '2', 'b', 'b', '3', '4', '5', 'c', 'c'};
+    const std::vector<uint8_t> replacement = {'X', 'X'};
+    const auto dstPath = GetOutputPath(L"replace_chunks_streamed.bin");
+
+    REQUIRE_NOTHROW(Image::detail::ReplaceChunks(
+        data, dstPath, {{2, 5}, {7, 10}},
+        {std::span<const uint8_t>(replacement), std::optional<std::span<const uint8_t>>{}}));
+
+    std::ifstream in(dstPath, std::ios::binary);
+    REQUIRE(in);
+    const std::vector<uint8_t> bytes(std::istreambuf_iterator<char>(in), {});
+    REQUIRE(bytes == std::vector<uint8_t>{'a', 'a', 'X', 'X', 'b', 'b', '3', '4', '5', 'c', 'c'});
 }
 
 TEST_CASE("ExtractDdsFromAfb") {

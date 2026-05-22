@@ -2,7 +2,6 @@
 #include "chunk.hpp"
 
 #include <algorithm>
-#include <cstring>
 #include <fmt/format.h>
 #include <fstream>
 #include <string_view>
@@ -24,6 +23,14 @@ namespace {
         pos += ndl.size();
     }
     return out;
+}
+
+void WriteBytes(std::ofstream &out, const fs::path &path, const std::span<const uint8_t> bytes) {
+    if (bytes.empty())
+        return;
+    out.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    if (!out)
+        throw lib::FileError(path, "Failed to write file");
 }
 
 } // namespace
@@ -126,40 +133,33 @@ void ReplaceChunks(const std::span<const uint8_t> data, const fs::path &dstPath,
             fmt::format("Replacements size {} < chunks size {}", replacements.size(), chunks.size()));
     }
 
-    size_t outSize = data.size();
-    for (size_t i = 0; i < chunks.size(); ++i) {
-        if (!replacements[i].has_value())
-            continue;
-        const auto [s, e] = chunks[i];
-        outSize = outSize + replacements[i]->size() - (e - s);
-    }
-
-    std::vector<uint8_t> out;
-    out.resize(outSize);
-    uint8_t *dst = out.data();
     size_t cursor = 0;
-    for (size_t i = 0; i < chunks.size(); ++i) {
-        auto [s, e] = chunks[i];
-        std::memcpy(dst, data.data() + cursor, s - cursor);
-        dst += s - cursor;
-        if (replacements[i].has_value()) {
-            const auto &repl = replacements[i].value();
-            std::memcpy(dst, repl.data(), repl.size());
-            dst += repl.size();
-        } else {
-            std::memcpy(dst, data.data() + s, e - s);
-            dst += e - s;
+    for (const auto [s, e] : chunks) {
+        if (s < cursor || s > e || e > data.size()) {
+            throw std::out_of_range(
+                fmt::format("Invalid chunk range: [{}, {}) after cursor {} for data size {}", s, e, cursor,
+                            data.size()));
         }
         cursor = e;
     }
-    std::memcpy(dst, data.data() + cursor, data.size() - cursor);
 
     std::ofstream outFile(dstPath, std::ios::binary);
     if (!outFile)
         throw lib::FileError(dstPath, "Failed to create file");
-    outFile.write(reinterpret_cast<const char *>(out.data()), static_cast<std::streamsize>(out.size()));
-    if (!outFile)
-        throw lib::FileError(dstPath, "Failed to write file");
+
+    cursor = 0;
+    for (size_t i = 0; i < chunks.size(); ++i) {
+        auto [s, e] = chunks[i];
+        WriteBytes(outFile, dstPath, data.subspan(cursor, s - cursor));
+        if (replacements[i].has_value()) {
+            const auto &repl = replacements[i].value();
+            WriteBytes(outFile, dstPath, repl);
+        } else {
+            WriteBytes(outFile, dstPath, data.subspan(s, e - s));
+        }
+        cursor = e;
+    }
+    WriteBytes(outFile, dstPath, data.subspan(cursor));
 }
 
 } // namespace Image::detail

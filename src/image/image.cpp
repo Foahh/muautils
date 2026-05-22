@@ -1,8 +1,6 @@
 // src/image/image.cpp
 #include "image.hpp"
 
-#include <future>
-
 #include "detail/chunk.hpp"
 #include "detail/dds.hpp"
 #include "detail/raster.hpp"
@@ -54,14 +52,9 @@ void Image::ConvertJacket(const fs::path &srcPath, const fs::path &dstPath) {
 
 void Image::ConvertStage(const fs::path &bgSrcPath, const fs::path &stSrcPath, const fs::path &stDstPath,
                          const std::array<fs::path, 4> &fxSrcPaths) {
-
-    auto stFut = std::async(std::launch::async, [&] { return ReadFileData(stSrcPath); });
-    auto bgFut = std::async(std::launch::async, [&] { return ConvertBackgroundDds(bgSrcPath); });
-    auto fxFut = std::async(std::launch::async, [&] { return ConvertEffectDds(fxSrcPaths); });
-
-    const auto stAfb = stFut.get();
-    const auto bgDds = bgFut.get();
-    const auto fxDds = fxFut.get();
+    const auto stAfb = ReadFileData(stSrcPath);
+    const auto bgDds = ConvertBackgroundDds(bgSrcPath);
+    const auto fxDds = ConvertEffectDds(fxSrcPaths);
 
     const auto stChunks = LocateDdsChunks(stAfb);
     ReplaceChunks(stAfb, stDstPath, stChunks, {std::span<const uint8_t>(bgDds), std::span<const uint8_t>(fxDds)});

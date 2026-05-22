@@ -5,6 +5,8 @@
 #include <cstring>
 #include <fmt/format.h>
 #include <fstream>
+#include <mutex>
+#include <utility>
 
 #include <rdo_bc_encoder.h>
 
@@ -34,6 +36,11 @@ namespace {
     }
 }
 
+[[nodiscard]] std::mutex &EncoderMutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+
 } // namespace
 
 std::vector<uint8_t> EncodeDds(std::span<const uint8_t> rgba, const unsigned width, const unsigned height,
@@ -45,9 +52,17 @@ std::vector<uint8_t> EncodeDds(std::span<const uint8_t> rgba, const unsigned wid
     }
 
     static_assert(sizeof(utils::color_quad_u8) == 4, "utils::color_quad_u8 must be 4 bytes for memcpy staging");
-    utils::image_u8 src;
-    src.init(width, height);
-    std::memcpy(src.get_pixels().data(), rgba.data(), expected);
+    RgbaImage image{.width = width, .height = height, .pixels = std::vector<utils::color_quad_u8>(expected / 4)};
+    std::memcpy(image.pixels.data(), rgba.data(), expected);
+    return EncodeDds(std::move(image), compression);
+}
+
+std::vector<uint8_t> EncodeDds(RgbaImage image, const DdsCompression compression) {
+    const size_t expected = static_cast<size_t>(image.width) * image.height;
+    if (image.pixels.size() != expected) {
+        throw std::runtime_error(fmt::format("RGBA buffer size mismatch: got {} pixels, expected {} for {}x{}",
+                                             image.pixels.size(), expected, image.width, image.height));
+    }
 
     rdo_bc::rdo_bc_params params;
     params.m_dxgi_format = ToDxgiFormat(compression);
@@ -58,10 +73,18 @@ std::vector<uint8_t> EncodeDds(std::span<const uint8_t> rgba, const unsigned wid
     params.m_rdo_multithreading = true;
     params.m_use_bc7e = false;
 
+    utils::image_u8 src;
+    src.init(image.width, image.height);
+    src.get_pixels() = std::move(image.pixels);
+
     rdo_bc::rdo_bc_encoder encoder;
-    if (!encoder.init(src, params) || !encoder.encode()) {
-        throw std::runtime_error(fmt::format("bc7enc_rdo failed to encode {}x{} (compression={})", width, height,
-                                             static_cast<int>(compression)));
+    {
+        // rdo_bc_encoder::init() calls rgbcx::init(), which mutates global tables.
+        std::scoped_lock lock(EncoderMutex());
+        if (!encoder.init(src, params) || !encoder.encode()) {
+            throw std::runtime_error(fmt::format("bc7enc_rdo failed to encode {}x{} (compression={})", image.width,
+                                                 image.height, static_cast<int>(compression)));
+        }
     }
 
     DDSURFACEDESC2 desc{};

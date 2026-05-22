@@ -10,13 +10,11 @@ using namespace Image::detail;
 namespace {
 
 [[nodiscard]] std::vector<uint8_t> ConvertJacketDds(const fs::path &srcPath) {
-    const RgbaImage img = LoadResizedRgba(srcPath, 300, 300);
-    return EncodeDds(img.span(), img.width, img.height, DdsCompression::Bc1);
+    return EncodeDds(LoadResizedRgba(srcPath, 300, 300), DdsCompression::Bc1);
 }
 
 [[nodiscard]] std::vector<uint8_t> ConvertBackgroundDds(const fs::path &srcPath) {
-    const RgbaImage img = LoadResizedRgba(srcPath, 1920, 1080);
-    return EncodeDds(img.span(), img.width, img.height, DdsCompression::Bc1);
+    return EncodeDds(LoadResizedRgba(srcPath, 1920, 1080), DdsCompression::Bc1);
 }
 
 [[nodiscard]] std::vector<uint8_t> ConvertEffectDds(const std::array<fs::path, 4> &srcPaths) {
@@ -31,8 +29,7 @@ namespace {
         }
     }
 
-    const RgbaImage canvas = JoinTiles2x2(tiles);
-    return EncodeDds(canvas.span(), canvas.width, canvas.height, DdsCompression::Bc3);
+    return EncodeDds(JoinTiles2x2(tiles), DdsCompression::Bc3);
 }
 
 } // namespace

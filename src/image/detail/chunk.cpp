@@ -136,9 +136,8 @@ void ReplaceChunks(const std::span<const uint8_t> data, const fs::path &dstPath,
     size_t cursor = 0;
     for (const auto [s, e] : chunks) {
         if (s < cursor || s > e || e > data.size()) {
-            throw std::out_of_range(
-                fmt::format("Invalid chunk range: [{}, {}) after cursor {} for data size {}", s, e, cursor,
-                            data.size()));
+            throw std::out_of_range(fmt::format("Invalid chunk range: [{}, {}) after cursor {} for data size {}", s, e,
+                                                cursor, data.size()));
         }
         cursor = e;
     }

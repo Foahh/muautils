@@ -12,12 +12,14 @@
 namespace Image::detail {
 namespace {
 
-[[nodiscard]] size_t PixelBufferSize(const unsigned width, const unsigned height) {
-    return static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
+static_assert(sizeof(utils::color_quad_u8) == 4, "RGBA pixels must be tightly packed");
+
+[[nodiscard]] size_t PixelCount(const unsigned width, const unsigned height) {
+    return static_cast<size_t>(width) * static_cast<size_t>(height);
 }
 
 [[nodiscard]] size_t PixelOffset(const unsigned width, const unsigned x, const unsigned y) {
-    return (static_cast<size_t>(y) * width + x) * 4;
+    return static_cast<size_t>(y) * width + x;
 }
 
 [[noreturn]] void ThrowImageError(const fs::path &path, const std::string &message) {
@@ -57,30 +59,30 @@ void ValidateImageSpec(const fs::path &path, const OIIO::ImageSpec &spec) {
 
     const auto width = static_cast<unsigned>(spec.width);
     const auto height = static_cast<unsigned>(spec.height);
+    RgbaImage rgba{
+        .width = width, .height = height, .pixels = std::vector<utils::color_quad_u8>(PixelCount(width, height))};
+
+    if (channels == 4) {
+        if (!image.get_pixels(roi, OIIO::TypeDesc::UINT8, rgba.pixels.data())) {
+            ThrowImageError(path, image.geterror());
+        }
+        return rgba;
+    }
+
     std::vector<uint8_t> source(static_cast<size_t>(spec.width) * spec.height * channels);
     if (!image.get_pixels(roi, OIIO::TypeDesc::UINT8, source.data())) {
         ThrowImageError(path, image.geterror());
     }
 
-    RgbaImage rgba{.width = width, .height = height, .pixels = std::vector<uint8_t>(PixelBufferSize(width, height))};
     for (size_t pixel = 0; pixel < static_cast<size_t>(width) * height; ++pixel) {
         const uint8_t *src = source.data() + pixel * channels;
-        uint8_t *dst = rgba.pixels.data() + pixel * 4;
+        auto &dst = rgba.pixels[pixel];
         if (channels == 1) {
-            dst[0] = src[0];
-            dst[1] = src[0];
-            dst[2] = src[0];
-            dst[3] = 255;
+            dst.set(src[0], 255);
         } else if (channels == 2) {
-            dst[0] = src[0];
-            dst[1] = src[0];
-            dst[2] = src[0];
-            dst[3] = src[1];
+            dst.set(src[0], src[1]);
         } else {
-            dst[0] = src[0];
-            dst[1] = src[1];
-            dst[2] = src[2];
-            dst[3] = channels >= 4 ? src[3] : 255;
+            dst.set(src[0], src[1], src[2], channels >= 4 ? src[3] : 255);
         }
     }
     return rgba;
@@ -118,7 +120,9 @@ RgbaImage MakeBlankRgba(const unsigned width, const unsigned height) {
     if (width == 0 || height == 0) {
         throw std::runtime_error("Blank image dimensions must be positive");
     }
-    return {.width = width, .height = height, .pixels = std::vector<uint8_t>(PixelBufferSize(width, height), 0)};
+    return {.width = width,
+            .height = height,
+            .pixels = std::vector<utils::color_quad_u8>(PixelCount(width, height), utils::color_quad_u8(0, 0, 0, 0))};
 }
 
 RgbaImage JoinTiles2x2(const std::array<RgbaImage, 4> &tiles) {
@@ -128,7 +132,7 @@ RgbaImage JoinTiles2x2(const std::array<RgbaImage, 4> &tiles) {
         if (tile.width != tileWidth || tile.height != tileHeight) {
             throw std::runtime_error("Effect tiles must have matching dimensions");
         }
-        if (tile.pixels.size() != PixelBufferSize(tile.width, tile.height)) {
+        if (tile.pixels.size() != PixelCount(tile.width, tile.height)) {
             throw std::runtime_error("Invalid RGBA tile buffer size");
         }
     }
@@ -141,7 +145,8 @@ RgbaImage JoinTiles2x2(const std::array<RgbaImage, 4> &tiles) {
         for (unsigned row = 0; row < tile.height; ++row) {
             const size_t src = PixelOffset(tile.width, 0, row);
             const size_t dst = PixelOffset(canvas.width, tileX * tileWidth, tileY * tileHeight + row);
-            std::memcpy(canvas.pixels.data() + dst, tile.pixels.data() + src, static_cast<size_t>(tile.width) * 4);
+            std::memcpy(canvas.pixels.data() + dst, tile.pixels.data() + src,
+                        static_cast<size_t>(tile.width) * sizeof(utils::color_quad_u8));
         }
     }
     return canvas;

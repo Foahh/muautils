@@ -2,9 +2,10 @@
 
 #include "lib.hpp"
 
+#include <utils.h>
+
 #include <array>
 #include <cstdint>
-#include <span>
 #include <vector>
 
 namespace Image::detail {
@@ -12,11 +13,7 @@ namespace Image::detail {
 struct RgbaImage {
     unsigned width = 0;
     unsigned height = 0;
-    std::vector<uint8_t> pixels;
-
-    [[nodiscard]] std::span<const uint8_t> span() const noexcept {
-        return pixels;
-    }
+    std::vector<utils::color_quad_u8> pixels;
 };
 
 void ValidateImage(const fs::path &path);

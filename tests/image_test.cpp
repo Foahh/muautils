@@ -1,7 +1,10 @@
 #include "common.hpp"
 
+#include <array>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+#include <string_view>
 #include <vector>
 
 #include "image/detail/chunk.hpp"
@@ -9,8 +12,71 @@
 
 using namespace Image;
 
+namespace {
+
+void WriteBytes(const fs::path &path, const std::string_view bytes) {
+    std::ofstream out(path, std::ios::binary);
+    if (!out) {
+        throw lib::FileError(path, "Failed to create generated test fixture");
+    }
+    out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+    if (!out) {
+        throw lib::FileError(path, "Failed to write generated test fixture");
+    }
+}
+
+void EnsureGeneratedPpm(const fs::path &path, const int width, const int height, const int seed) {
+    if (std::filesystem::exists(path)) {
+        return;
+    }
+
+    std::ofstream out(path, std::ios::binary);
+    if (!out) {
+        throw lib::FileError(path, "Failed to create generated image fixture");
+    }
+    out << "P6\n" << width << " " << height << "\n255\n";
+
+    std::vector<char> row(static_cast<size_t>(width) * 3);
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const size_t i = static_cast<size_t>(x) * 3;
+            row[i] = static_cast<char>((x + seed * 29) & 0xff);
+            row[i + 1] = static_cast<char>((y + seed * 47) & 0xff);
+            row[i + 2] = static_cast<char>(((x / 2) + (y / 3) + seed * 71) & 0xff);
+        }
+        out.write(row.data(), static_cast<std::streamsize>(row.size()));
+    }
+    if (!out) {
+        throw lib::FileError(path, "Failed to write generated image fixture");
+    }
+}
+
+void EnsureGeneratedAfb(const fs::path &path) {
+    if (std::filesystem::exists(path)) {
+        return;
+    }
+
+    WriteBytes(path,
+               "AFB_GENERATED_PREFIX_DDS generated placeholder 1_POF0"
+               "AFB_GENERATED_MIDDLE_DDS generated placeholder 2_POF0"
+               "AFB_GENERATED_SUFFIX");
+}
+
+void EnsureImageFixtures() {
+    std::filesystem::create_directories(GetInputPath());
+    EnsureGeneratedPpm(GetInputPath(L"1.jpg"), 640, 640, 1);
+    EnsureGeneratedPpm(GetInputPath(L"2.jpg"), 768, 768, 2);
+    EnsureGeneratedPpm(GetInputPath(L"3.jpg"), 896, 896, 3);
+    EnsureGeneratedPpm(GetInputPath(L"4.jpg"), 1024, 1024, 4);
+    EnsureGeneratedPpm(GetInputPath(L"bg.png"), 1920, 1080, 5);
+    EnsureGeneratedAfb(GetInputPath(L"st_dummy.afb"));
+}
+
+} // namespace
+
 int main(const int argc, char *argv[]) {
     Setup();
+    EnsureImageFixtures();
     Initialize();
     const int ret = Catch::Session().run(argc, argv);
     return ret;
@@ -119,4 +185,31 @@ TEST_CASE("ExtractDdsFromAfb") {
     }
 
     REQUIRE(foundDdsFile);
+}
+
+TEST_CASE("Image performance benchmarks", "[.][!benchmark][image]") {
+    const auto jacketSrcPath = GetInputPath(L"1.jpg");
+    const auto bgSrcPath = GetInputPath(L"bg.png");
+    const auto stSrcPath = GetInputPath(L"st_dummy.afb");
+    const std::array fxSrcPaths = {GetInputPath(L"1.jpg"), GetInputPath(L"2.jpg"), GetInputPath(L"3.jpg"),
+                                   GetInputPath(L"4.jpg")};
+
+    BENCHMARK("ConvertJacket") {
+        const auto dstPath = GetOutputPath(L"benchmark_jacket.dds");
+        ConvertJacket(jacketSrcPath, dstPath);
+        return std::filesystem::file_size(dstPath);
+    };
+
+    BENCHMARK("ConvertStage") {
+        const auto dstPath = GetOutputPath(L"benchmark_stage.afb");
+        ConvertStage(bgSrcPath, stSrcPath, dstPath, fxSrcPaths);
+        return std::filesystem::file_size(dstPath);
+    };
+
+    BENCHMARK("ExtractDds") {
+        const auto dstFolder = GetOutputPath(L"benchmark_extract_dds");
+        std::filesystem::create_directories(dstFolder);
+        ExtractDds(stSrcPath, dstFolder);
+        return std::distance(std::filesystem::directory_iterator(dstFolder), std::filesystem::directory_iterator());
+    };
 }

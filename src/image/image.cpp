@@ -5,6 +5,8 @@
 #include "detail/dds.hpp"
 #include "detail/raster.hpp"
 
+#include <OpenImageIO/imageio.h>
+
 using namespace Image::detail;
 
 namespace {
@@ -35,7 +37,7 @@ namespace {
 } // namespace
 
 void Image::Initialize() {
-    // no-op
+    OIIO::attribute("imageinput:strict", 0);
 }
 
 void Image::EnsureValid(const fs::path &srcPath) {

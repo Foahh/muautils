@@ -58,19 +58,22 @@ template <typename T> int run_impl(int argc, T **argv) {
     subcmd_audio_normalize->add_option("-d,--dst", audio_normalize_opts.dst)->required();
     subcmd_audio_normalize->add_option("-o,--offset", audio_normalize_opts.options.Offset, "offset (s)");
     subcmd_audio_normalize
-        ->add_option("--sample-format", audio_normalize_opts.sample_format, "sample format (u8, s16, s32, s64, flt, dbl)")
+        ->add_option("--sample-format", audio_normalize_opts.sample_format,
+                     "sample format (u8, s16, s32, s64, flt, dbl)")
         ->default_val(audio_normalize_opts.sample_format);
-    subcmd_audio_normalize
-        ->add_option("--sample-rate", audio_normalize_opts.options.SampleRate, "sample rate (Hz)")
+    subcmd_audio_normalize->add_option("--sample-rate", audio_normalize_opts.options.SampleRate, "sample rate (Hz)")
         ->check(CLI::PositiveNumber);
     subcmd_audio_normalize->add_option("--lufs", audio_normalize_opts.options.Loudness, "target loudness (LUFS)");
-    subcmd_audio_normalize->add_option("--lu", audio_normalize_opts.options.LoudnessRange, "target loudness range (LU)");
+    subcmd_audio_normalize->add_option("--lu", audio_normalize_opts.options.LoudnessRange,
+                                       "target loudness range (LU)");
     subcmd_audio_normalize->add_option("--dbtp", audio_normalize_opts.options.TruePeak, "target true peak (dBTP)");
     subcmd_audio_normalize
-        ->add_option("--true-peak-tolerance", audio_normalize_opts.options.TruePeakTolerance, "true peak tolerance (dB)")
+        ->add_option("--true-peak-tolerance", audio_normalize_opts.options.TruePeakTolerance,
+                     "true peak tolerance (dB)")
         ->check(CLI::NonNegativeNumber);
     subcmd_audio_normalize
-        ->add_option("--lu-tolerance", audio_normalize_opts.options.LoudnessRangeTolerance, "loudness range tolerance (LU)")
+        ->add_option("--lu-tolerance", audio_normalize_opts.options.LoudnessRangeTolerance,
+                     "loudness range tolerance (LU)")
         ->check(CLI::NonNegativeNumber);
     subcmd_audio_normalize
         ->add_option("--gain-tolerance", audio_normalize_opts.options.GainTolerance, "gain tolerance (dB)")

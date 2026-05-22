@@ -21,10 +21,10 @@ struct TargetFormat {
     double LoudnessRange; // LU
     double TruePeak;      // dBTP
 
-    double TruePeakTolerance;     // dB
+    double TruePeakTolerance;      // dB
     double LoudnessRangeTolerance; // LU
-    double GainTolerance;         // dB
-    double OffsetTolerance;       // seconds
+    double GainTolerance;          // dB
+    double OffsetTolerance;        // seconds
 };
 
 inline AVCodecID CodecIdForSampleFormat(const AVSampleFormat sampleFormat) {

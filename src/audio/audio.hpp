@@ -18,10 +18,10 @@ struct NormalizeOptions {
     double LoudnessRange = 11.0; // LU
     double TruePeak = 0.0;       // dBTP
 
-    double TruePeakTolerance = 0.5;     // dB
+    double TruePeakTolerance = 0.5;      // dB
     double LoudnessRangeTolerance = 0.1; // LU
-    double GainTolerance = 0.2;         // dB
-    double OffsetTolerance = 0.0001;    // seconds
+    double GainTolerance = 0.2;          // dB
+    double OffsetTolerance = 0.0001;     // seconds
 };
 
 void Initialize();

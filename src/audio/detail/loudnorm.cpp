@@ -11,9 +11,9 @@ extern "C" {
 #include "audio/detail/target_format.hpp"
 #include "lib.hpp"
 
+#include <cctype>
 #include <cerrno>
 #include <chrono>
-#include <cctype>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -81,11 +81,8 @@ double ReadJsonDouble(const std::string &json, const char *key) {
 LoudNormStats ReadLoudNormStats(const fs::path &path) {
     const auto json = ReadFile(path);
     return {
-        ReadJsonDouble(json, "input_i"),
-        ReadJsonDouble(json, "input_tp"),
-        ReadJsonDouble(json, "input_lra"),
-        ReadJsonDouble(json, "input_thresh"),
-        ReadJsonDouble(json, "target_offset"),
+        ReadJsonDouble(json, "input_i"),      ReadJsonDouble(json, "input_tp"),      ReadJsonDouble(json, "input_lra"),
+        ReadJsonDouble(json, "input_thresh"), ReadJsonDouble(json, "target_offset"),
     };
 }
 

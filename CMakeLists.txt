@@ -13,7 +13,14 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 
 add_library(mua_common INTERFACE)
-target_link_libraries(mua_common INTERFACE spdlog::spdlog fmt::fmt)
+get_target_property(MUA_SPDLOG_INCLUDE_DIRS spdlog::spdlog_header_only INTERFACE_INCLUDE_DIRECTORIES)
+foreach (_mua_spdlog_include IN LISTS MUA_SPDLOG_INCLUDE_DIRS)
+    target_include_directories(mua_common INTERFACE "$<BUILD_INTERFACE:${_mua_spdlog_include}>")
+endforeach ()
+target_compile_definitions(mua_common INTERFACE
+        "$<BUILD_INTERFACE:SPDLOG_HEADER_ONLY>"
+        "$<BUILD_INTERFACE:SPDLOG_FMT_EXTERNAL_HO>")
+target_link_libraries(mua_common INTERFACE fmt::fmt-header-only)
 target_include_directories(mua_common INTERFACE
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>")
@@ -34,21 +41,9 @@ target_link_libraries(mua_audio PRIVATE ${FFMPEG_LIBRARIES})
 
 include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/bc7enc.cmake")
 
-find_package(ZLIB REQUIRED)
-find_package(PNG REQUIRED)
-find_package(WebP CONFIG REQUIRED)
-find_package(libjpeg-turbo CONFIG REQUIRED)
-if (TARGET libjpeg-turbo::turbojpeg)
-    set(MUA_TURBOJPEG_TARGET libjpeg-turbo::turbojpeg)
-elseif (TARGET libjpeg-turbo::turbojpeg-static)
-    set(MUA_TURBOJPEG_TARGET libjpeg-turbo::turbojpeg-static)
-else ()
-    message(FATAL_ERROR "libjpeg-turbo TurboJPEG target not found")
-endif ()
+find_package(OpenImageIO CONFIG REQUIRED)
 add_library(mua_image STATIC
         src/image/detail/chunk.cpp
-        src/image/detail/raster_inspect.cpp
-        src/image/detail/raster_decode.cpp
         src/image/detail/raster_resize.cpp
         src/image/detail/dds.cpp
         src/image/image.cpp)
@@ -56,10 +51,7 @@ target_link_libraries(mua_image PUBLIC mua_common)
 
 target_link_libraries(mua_image PRIVATE
         $<BUILD_INTERFACE:bc7enc>
-        PNG::PNG
-        WebP::webp
-        WebP::webpdecoder
-        ${MUA_TURBOJPEG_TARGET})
+        OpenImageIO::OpenImageIO)
 
 add_executable(mua src/main.cpp src/cli/app.cpp)
 find_package(CLI11 CONFIG REQUIRED)

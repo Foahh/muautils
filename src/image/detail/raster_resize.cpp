@@ -1,96 +1,103 @@
-#include "raster_internal.hpp"
-
-#include "chunk.hpp"
+#include "raster.hpp"
 
 #include <algorithm>
 #include <array>
-#include <cmath>
 #include <cstring>
 #include <stdexcept>
 
+#include <OpenImageIO/imagebuf.h>
+#include <OpenImageIO/imagebufalgo.h>
+#include <OpenImageIO/imageio.h>
+
 namespace Image::detail {
+namespace {
 
-RgbaImage ResizeRgba(const RgbaImage &src, const unsigned dstWidth, const unsigned dstHeight) {
-    if (src.width == 0 || src.height == 0) {
-        throw std::runtime_error("Source image is empty");
+[[nodiscard]] size_t PixelBufferSize(const unsigned width, const unsigned height) {
+    return static_cast<size_t>(width) * static_cast<size_t>(height) * 4;
+}
+
+[[nodiscard]] size_t PixelOffset(const unsigned width, const unsigned x, const unsigned y) {
+    return (static_cast<size_t>(y) * width + x) * 4;
+}
+
+[[noreturn]] void ThrowImageError(const fs::path &path, const std::string &message) {
+    throw lib::FileError(path, message);
+}
+
+void ValidateImageSpec(const fs::path &path, const OIIO::ImageSpec &spec) {
+    if (spec.width <= 0 || spec.height <= 0) {
+        ThrowImageError(path, "Invalid image dimensions");
     }
-    if (dstWidth == 0 || dstHeight == 0) {
-        throw std::runtime_error("Destination image is empty");
+    if (spec.nchannels <= 0) {
+        ThrowImageError(path, "Invalid image channel count");
     }
-    if (src.width == dstWidth && src.height == dstHeight) {
-        return src;
+}
+
+[[nodiscard]] OIIO::ImageBuf LoadOrientedImage(const fs::path &path) {
+    OIIO::ImageBuf image(lib::PathToUtf8(path));
+    if (!image.read(0, 0, true, OIIO::TypeDesc::UINT8)) {
+        ThrowImageError(path, image.geterror());
     }
 
-    RgbaImage resized{.width = dstWidth,
-                      .height = dstHeight,
-                      .pixels = std::vector<uint8_t>(PixelBufferSize(dstWidth, dstHeight))};
+    OIIO::ImageBuf oriented = OIIO::ImageBufAlgo::reorient(image);
+    if (oriented.has_error()) {
+        ThrowImageError(path, oriented.geterror());
+    }
+    return oriented;
+}
 
-    const double scaleX = static_cast<double>(src.width) / static_cast<double>(dstWidth);
-    const double scaleY = static_cast<double>(src.height) / static_cast<double>(dstHeight);
+[[nodiscard]] RgbaImage ToRgbaImage(const fs::path &path, OIIO::ImageBuf &image) {
+    const OIIO::ImageSpec &spec = image.spec();
+    ValidateImageSpec(path, spec);
 
-    for (unsigned y = 0; y < dstHeight; ++y) {
-        const double srcY = std::clamp((static_cast<double>(y) + 0.5) * scaleY - 0.5, 0.0,
-                                       static_cast<double>(src.height - 1));
-        const unsigned y0 = static_cast<unsigned>(srcY);
-        const unsigned y1 = std::min(y0 + 1, src.height - 1);
-        const double wy = srcY - static_cast<double>(y0);
+    const int channels = std::max(1, spec.nchannels);
+    OIIO::ROI roi = OIIO::get_roi(spec);
+    roi.chbegin = 0;
+    roi.chend = channels;
 
-        for (unsigned x = 0; x < dstWidth; ++x) {
-            const double srcX = std::clamp((static_cast<double>(x) + 0.5) * scaleX - 0.5, 0.0,
-                                           static_cast<double>(src.width - 1));
-            const unsigned x0 = static_cast<unsigned>(srcX);
-            const unsigned x1 = std::min(x0 + 1, src.width - 1);
-            const double wx = srcX - static_cast<double>(x0);
+    const auto width = static_cast<unsigned>(spec.width);
+    const auto height = static_cast<unsigned>(spec.height);
+    std::vector<uint8_t> source(static_cast<size_t>(spec.width) * spec.height * channels);
+    if (!image.get_pixels(roi, OIIO::TypeDesc::UINT8, source.data())) {
+        ThrowImageError(path, image.geterror());
+    }
 
-            const size_t topLeft = PixelOffset(src.width, x0, y0);
-            const size_t topRight = PixelOffset(src.width, x1, y0);
-            const size_t bottomLeft = PixelOffset(src.width, x0, y1);
-            const size_t bottomRight = PixelOffset(src.width, x1, y1);
-            const size_t dst = PixelOffset(dstWidth, x, y);
-
-            for (size_t channel = 0; channel < 4; ++channel) {
-                const double top = static_cast<double>(src.pixels[topLeft + channel]) * (1.0 - wx) +
-                                   static_cast<double>(src.pixels[topRight + channel]) * wx;
-                const double bottom = static_cast<double>(src.pixels[bottomLeft + channel]) * (1.0 - wx) +
-                                      static_cast<double>(src.pixels[bottomRight + channel]) * wx;
-                resized.pixels[dst + channel] = static_cast<uint8_t>(
-                    std::clamp(std::lround(top * (1.0 - wy) + bottom * wy), 0l, 255l));
-            }
+    RgbaImage rgba{.width = width, .height = height, .pixels = std::vector<uint8_t>(PixelBufferSize(width, height))};
+    for (size_t pixel = 0; pixel < static_cast<size_t>(width) * height; ++pixel) {
+        const uint8_t *src = source.data() + pixel * channels;
+        uint8_t *dst = rgba.pixels.data() + pixel * 4;
+        if (channels == 1) {
+            dst[0] = src[0];
+            dst[1] = src[0];
+            dst[2] = src[0];
+            dst[3] = 255;
+        } else if (channels == 2) {
+            dst[0] = src[0];
+            dst[1] = src[0];
+            dst[2] = src[0];
+            dst[3] = src[1];
+        } else {
+            dst[0] = src[0];
+            dst[1] = src[1];
+            dst[2] = src[2];
+            dst[3] = channels >= 4 ? src[3] : 255;
         }
     }
-
-    return resized;
+    return rgba;
 }
+
+} // namespace
 
 void ValidateImage(const fs::path &path) {
-    const std::vector<uint8_t> bytes = ReadFileData(path);
-    try {
-        static_cast<void>(InspectImage(path, bytes));
-    } catch (const lib::FileError &) {
-        throw;
-    } catch (const std::exception &e) {
-        ThrowDecodeError(path, e.what());
-    }
-}
-
-RgbaImage LoadRgba(const fs::path &path) {
-    const std::vector<uint8_t> bytes = ReadFileData(path);
-    try {
-        const EncodedImageInfo info = InspectImage(path, bytes);
-        switch (info.format) {
-        case EncodedImageFormat::Jpeg:
-            return DecodeJpeg(path, bytes, info);
-        case EncodedImageFormat::Png:
-            return DecodePng(path, bytes);
-        case EncodedImageFormat::Webp:
-            return DecodeWebp(path, bytes, info);
+    auto input = OIIO::ImageInput::open(lib::PathToUtf8(path));
+    if (!input) {
+        std::string message = OIIO::geterror();
+        if (message.empty()) {
+            message = "Failed to open image";
         }
-    } catch (const lib::FileError &) {
-        throw;
-    } catch (const std::exception &e) {
-        ThrowDecodeError(path, e.what());
+        ThrowImageError(path, message);
     }
-    ThrowDecodeError(path, "Unsupported image format");
+    ValidateImageSpec(path, input->spec());
 }
 
 RgbaImage LoadResizedRgba(const fs::path &path, const int width, const int height) {
@@ -98,29 +105,13 @@ RgbaImage LoadResizedRgba(const fs::path &path, const int width, const int heigh
         throw lib::FileError(path, "Requested image size must be positive");
     }
 
-    const unsigned targetWidth = static_cast<unsigned>(width);
-    const unsigned targetHeight = static_cast<unsigned>(height);
-    const std::vector<uint8_t> bytes = ReadFileData(path);
-    try {
-        const EncodedImageInfo info = InspectImage(path, bytes);
-        switch (info.format) {
-        case EncodedImageFormat::Jpeg:
-            return ResizeRgba(DecodeJpegScaled(path, bytes, info, targetWidth, targetHeight), targetWidth,
-                              targetHeight);
-        case EncodedImageFormat::Png:
-            return ResizeRgba(DecodePng(path, bytes), targetWidth, targetHeight);
-        case EncodedImageFormat::Webp:
-            if (CanDownscaleDuringDecode(info, targetWidth, targetHeight)) {
-                return DecodeWebpScaled(path, bytes, targetWidth, targetHeight);
-            }
-            return ResizeRgba(DecodeWebp(path, bytes, info), targetWidth, targetHeight);
-        }
-    } catch (const lib::FileError &) {
-        throw;
-    } catch (const std::exception &e) {
-        ThrowDecodeError(path, e.what());
+    OIIO::ImageBuf image = LoadOrientedImage(path);
+    const OIIO::ROI roi(0, width, 0, height, 0, 1, 0, image.nchannels());
+    OIIO::ImageBuf resized = OIIO::ImageBufAlgo::resize(image, {}, roi);
+    if (resized.has_error()) {
+        ThrowImageError(path, resized.geterror());
     }
-    ThrowDecodeError(path, "Unsupported image format");
+    return ToRgbaImage(path, resized);
 }
 
 RgbaImage MakeBlankRgba(const unsigned width, const unsigned height) {

@@ -3,17 +3,20 @@
 
 #include "lib.hpp"
 
-#include <array>
 #include <cstdint>
 #include <span>
 #include <vector>
 
 namespace Image::detail {
 
-std::vector<uint8_t> ConvertBackground(const fs::path &srcPath);
+enum class DdsCompression {
+    Bc1,
+    Bc3
+};
 
-std::vector<uint8_t> ConvertEffect(const std::array<fs::path, 4> &srcPaths);
+[[nodiscard]] std::vector<uint8_t> EncodeDds(std::span<const uint8_t> rgba, unsigned width, unsigned height,
+                                             DdsCompression compression);
 
-void SaveJacketDds(std::span<const uint8_t> rgba, unsigned width, unsigned height, const fs::path &dstPath);
+void SaveDds(const fs::path &dstPath, std::span<const uint8_t> bytes);
 
 } // namespace Image::detail

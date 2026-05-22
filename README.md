@@ -3,7 +3,7 @@
 C++23 libraries and a small CLI (`mua`) for audio and image processing.
 
 Audio is built on FFmpeg.
-Image work uses libjpeg-turbo, libpng, libwebp, and [bc7enc_rdo](https://github.com/richgel999/bc7enc_rdo) for DDS output.
+Image decoding, orientation handling, and resizing use OpenImageIO; DDS output uses [bc7enc_rdo](https://github.com/richgel999/bc7enc_rdo).
 
 ## Requirements
 

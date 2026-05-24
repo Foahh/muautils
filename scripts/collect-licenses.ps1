@@ -41,17 +41,13 @@ $packages = @(
     "minizip-ng",
     "fmt",
     "spdlog",
+    "directxtex",
     "cli11"
 )
 
 New-Item -ItemType Directory -Force -Path $licensesDir | Out-Null
 
 Copy-Item -Force (Join-Path $root "LICENSE") (Join-Path $licensesDir "LGPL-2.1.txt")
-
-$bc7 = Join-Path $root "third_party/bc7enc_rdo/LICENSE"
-if (Test-Path $bc7) {
-    Copy-Item -Force $bc7 (Join-Path $licensesDir "bc7enc_rdo.txt")
-}
 
 $missing = @()
 foreach ($pkg in $packages) {

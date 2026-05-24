@@ -1,14 +1,15 @@
 // src/image/detail/dds.cpp
 #include "dds.hpp"
 
-#include <algorithm>
+#include <DirectXTex.h>
+
+#include <cstdint>
 #include <cstring>
 #include <fmt/format.h>
 #include <fstream>
-#include <mutex>
+#include <stdexcept>
+#include <string_view>
 #include <utility>
-
-#include <rdo_bc_encoder.h>
 
 namespace Image::detail {
 
@@ -24,21 +25,13 @@ namespace {
     throw std::runtime_error(fmt::format("Unsupported DDS compression {}", static_cast<int>(compression)));
 }
 
-[[nodiscard]] uint32_t CompressionFourCc(const DXGI_FORMAT format) {
-    switch (format) {
-    case DXGI_FORMAT_BC1_UNORM:
-        return PIXEL_FMT_FOURCC('D', 'X', 'T', '1');
-    case DXGI_FORMAT_BC3_UNORM:
-        return PIXEL_FMT_FOURCC('D', 'X', 'T', '5');
-    default:
-        throw std::runtime_error(
-            fmt::format("DDS writer received unsupported DXGI format {}", static_cast<int>(format)));
+void CheckDx(const HRESULT hr, const std::string_view operation, const unsigned width, const unsigned height,
+             const DdsCompression compression) {
+    if (FAILED(hr)) {
+        throw std::runtime_error(fmt::format("{} failed for {}x{} DDS (compression={}): HRESULT 0x{:08X}",
+                                             operation, width, height, static_cast<int>(compression),
+                                             static_cast<uint32_t>(hr)));
     }
-}
-
-[[nodiscard]] std::mutex &EncoderMutex() {
-    static std::mutex mutex;
-    return mutex;
 }
 
 } // namespace
@@ -51,8 +44,8 @@ std::vector<uint8_t> EncodeDds(std::span<const uint8_t> rgba, const unsigned wid
                                              rgba.size(), expected, width, height));
     }
 
-    static_assert(sizeof(utils::color_quad_u8) == 4, "utils::color_quad_u8 must be 4 bytes for memcpy staging");
-    RgbaImage image{.width = width, .height = height, .pixels = std::vector<utils::color_quad_u8>(expected / 4)};
+    static_assert(sizeof(RgbaPixel) == 4, "RgbaPixel must be 4 bytes for memcpy staging");
+    RgbaImage image{.width = width, .height = height, .pixels = std::vector<RgbaPixel>(expected / 4)};
     std::memcpy(image.pixels.data(), rgba.data(), expected);
     return EncodeDds(std::move(image), compression);
 }
@@ -64,50 +57,26 @@ std::vector<uint8_t> EncodeDds(RgbaImage image, const DdsCompression compression
                                              image.pixels.size(), expected, image.width, image.height));
     }
 
-    rdo_bc::rdo_bc_params params;
-    params.m_dxgi_format = ToDxgiFormat(compression);
-    params.m_status_output = false;
-    params.m_rdo_lambda = 0.0f;
-    params.m_bc1_quality_level = rgbcx::MAX_LEVEL;
-    params.m_use_hq_bc345 = true;
-    params.m_rdo_multithreading = true;
-    params.m_use_bc7e = false;
+    DirectX::Image src{};
+    src.width = image.width;
+    src.height = image.height;
+    src.format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    src.rowPitch = static_cast<size_t>(image.width) * sizeof(RgbaPixel);
+    src.slicePitch = src.rowPitch * image.height;
+    src.pixels = reinterpret_cast<uint8_t *>(image.pixels.data());
 
-    utils::image_u8 src;
-    src.init(image.width, image.height);
-    src.get_pixels() = std::move(image.pixels);
+    DirectX::ScratchImage compressed;
+    HRESULT hr = DirectX::Compress(src, ToDxgiFormat(compression), DirectX::TEX_COMPRESS_PARALLEL,
+                                   DirectX::TEX_THRESHOLD_DEFAULT, compressed);
+    CheckDx(hr, "DirectXTex compression", image.width, image.height, compression);
 
-    rdo_bc::rdo_bc_encoder encoder;
-    {
-        // rdo_bc_encoder::init() calls rgbcx::init(), which mutates global tables.
-        std::scoped_lock lock(EncoderMutex());
-        if (!encoder.init(src, params) || !encoder.encode()) {
-            throw std::runtime_error(fmt::format("bc7enc_rdo failed to encode {}x{} (compression={})", image.width,
-                                                 image.height, static_cast<int>(compression)));
-        }
-    }
+    DirectX::Blob dds;
+    hr = DirectX::SaveToDDSMemory(compressed.GetImages(), compressed.GetImageCount(), compressed.GetMetadata(),
+                                  DirectX::DDS_FLAGS_NONE, dds);
+    CheckDx(hr, "DirectXTex DDS serialization", image.width, image.height, compression);
 
-    DDSURFACEDESC2 desc{};
-    desc.dwSize = sizeof(desc);
-    desc.dwFlags = DDSD_CAPS | DDSD_HEIGHT | DDSD_WIDTH | DDSD_PIXELFORMAT | DDSD_LINEARSIZE;
-    desc.dwWidth = encoder.get_orig_width();
-    desc.dwHeight = encoder.get_orig_height();
-    desc.ddsCaps.dwCaps = DDSCAPS_TEXTURE;
-    desc.ddpfPixelFormat.dwSize = sizeof(desc.ddpfPixelFormat);
-    desc.ddpfPixelFormat.dwFlags = DDPF_FOURCC;
-    desc.ddpfPixelFormat.dwFourCC = CompressionFourCc(encoder.get_pixel_format());
-    const uint32_t blocksWide = std::max(1u, (desc.dwWidth + 3u) / 4u);
-    const uint32_t blocksTall = std::max(1u, (desc.dwHeight + 3u) / 4u);
-    const uint32_t bytesPerBlock = encoder.get_pixel_format_bpp() * 2u;
-    desc.lPitch = static_cast<int32_t>(blocksWide * blocksTall * bytesPerBlock);
-
-    constexpr size_t headerBytes = 4 + sizeof(DDSURFACEDESC2);
-    const size_t compressedBytes = encoder.get_total_blocks_size_in_bytes();
-    std::vector<uint8_t> out(headerBytes + compressedBytes);
-    std::memcpy(out.data(), "DDS ", 4);
-    std::memcpy(out.data() + 4, &desc, sizeof(desc));
-    std::memcpy(out.data() + headerBytes, encoder.get_blocks(), compressedBytes);
-    return out;
+    const uint8_t *bytes = dds.GetConstBufferPointer();
+    return {bytes, bytes + dds.GetBufferSize()};
 }
 
 void SaveDds(const fs::path &dstPath, std::span<const uint8_t> bytes) {

@@ -3,7 +3,7 @@
 C++23 libraries and a small CLI (`mua`) for audio and image processing.
 
 Audio is built on FFmpeg.
-Image decoding, orientation handling, and resizing use OpenImageIO; DDS output uses [bc7enc_rdo](https://github.com/richgel999/bc7enc_rdo).
+Image decoding, orientation handling, and resizing use OpenImageIO; DDS output uses [DirectXTex](https://github.com/microsoft/DirectXTex).
 
 ## Requirements
 
@@ -15,7 +15,7 @@ Image decoding, orientation handling, and resizing use OpenImageIO; DDS output u
 ## Build
 
 ```bash
-git clone --recurse-submodules <repository-url>
+git clone <repository-url>
 
 export VCPKG_ROOT=/path/to/vcpkg
 cmake -S . -B build \

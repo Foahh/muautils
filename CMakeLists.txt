@@ -39,8 +39,7 @@ target_include_directories(mua_audio PRIVATE ${FFMPEG_INCLUDE_DIRS})
 target_link_directories(mua_audio PRIVATE ${FFMPEG_LIBRARY_DIRS})
 target_link_libraries(mua_audio PRIVATE ${FFMPEG_LIBRARIES})
 
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/bc7enc.cmake")
-
+find_package(directxtex CONFIG REQUIRED)
 find_package(OpenImageIO CONFIG REQUIRED)
 add_library(mua_image STATIC
         src/image/detail/chunk.cpp
@@ -50,7 +49,7 @@ add_library(mua_image STATIC
 target_link_libraries(mua_image PUBLIC mua_common)
 
 target_link_libraries(mua_image PRIVATE
-        $<BUILD_INTERFACE:bc7enc>
+        Microsoft::DirectXTex
         OpenImageIO::OpenImageIO)
 
 add_executable(mua src/main.cpp src/cli/app.cpp)
@@ -69,7 +68,7 @@ target_link_libraries(test_image PRIVATE mua_image Catch2::Catch2 Catch2::Catch2
 target_include_directories(test_audio PRIVATE ${PRIVATE_INCLUDE_DIR})
 target_include_directories(test_image PRIVATE ${PRIVATE_INCLUDE_DIR})
 
-set(_mua_msvc_targets bc7enc mua mua_audio mua_image test_audio test_image)
+set(_mua_msvc_targets mua mua_audio mua_image test_audio test_image)
 if (MSVC)
     foreach (_mua_target IN LISTS _mua_msvc_targets)
         target_compile_options(${_mua_target} PRIVATE

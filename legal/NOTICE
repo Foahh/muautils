@@ -41,11 +41,11 @@ MIT
 ---
   fmt — licenses/fmt.txt
   spdlog — licenses/spdlog.txt
+  DirectXTex — licenses/directxtex.txt
   yaml-cpp — licenses/yaml-cpp.txt
   robin-map — licenses/robin-map.txt
   libdeflate — licenses/libdeflate.txt
   expat — licenses/expat.txt
-  bc7enc_rdo — licenses/bc7enc_rdo.txt (MIT or public domain; attribution appreciated)
 
 Other permissive licenses (full text in licenses/)
 --------------------------------------------------
